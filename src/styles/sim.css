@@ -610,6 +610,7 @@
 .sim ul.t {
   margin: 0;
   padding-left: 1.1em;
+  list-style: disc;
   display: grid;
   gap: 4px;
 }
@@ -737,4 +738,352 @@
   padding-block: 20px 8px;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+/* per-shard colour: reused by the placement map, load bars and shard tables */
+.sim-s-A {
+  --shard: var(--svc);
+}
+.sim-s-B {
+  --shard: var(--cons);
+}
+.sim-s-C {
+  --shard: var(--relay);
+}
+.sim-axes {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.sim-axis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sim-axis-label {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-width: 10ch;
+}
+.sim-store h3 .sim-s-A,
+.sim-store h3 .sim-s-B,
+.sim-store h3 .sim-s-C {
+  color: var(--shard);
+  font-weight: 700;
+}
+.sim-ring {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  margin-inline: auto;
+}
+.sim-ring text {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+.sim-ring .track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 10;
+}
+.sim-ring .arc {
+  fill: none;
+  stroke: var(--shard);
+  stroke-width: 10;
+  opacity: 0.75;
+}
+.sim-ring .pt {
+  fill: var(--shard);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.sim-ring .pt.pending {
+  fill: var(--surface);
+  stroke: var(--shard);
+  stroke-dasharray: 2 2;
+}
+.sim-ring .ptl {
+  fill: var(--shard);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.sim-ring .key {
+  fill: var(--shard);
+}
+.sim-ring .key.gone {
+  fill: var(--bad);
+}
+.sim-ring .focus {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.sim-ring .kl {
+  fill: var(--ink);
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.sim-load {
+  display: grid;
+  gap: 4px;
+}
+.sim-load-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) 7ch;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+}
+.sim-load-track {
+  height: 9px;
+  border-radius: 99px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+.sim-load-fill {
+  display: block;
+  height: 100%;
+  background: var(--shard);
+}
+
+/* sharding: part structure and placement lab */
+.sim ol.sim-parts {
+  margin: 0;
+  padding-left: 1.3em;
+  list-style: decimal;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+.sim-section.sim-first {
+  gap: 12px;
+}
+.sim-section h3 {
+  margin-top: 4px;
+}
+.sim-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+}
+.sim-pick-prefix {
+  color: var(--muted);
+  margin-left: 6px;
+}
+.sim-pick input {
+  width: 8ch;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+}
+.sim ol.sim-trace {
+  margin: 0;
+  padding: 0 0 0 1.8em;
+  list-style: decimal;
+  display: grid;
+  gap: 6px;
+  font-family: var(--f-mono);
+  font-size: 0.76rem;
+}
+.sim-trace li span {
+  display: block;
+  color: var(--muted);
+}
+.sim-lab-cols {
+  display: grid;
+  gap: 8px;
+}
+.sim-lab-col {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  min-width: 0;
+}
+.sim-lab-head {
+  display: grid;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  border-bottom: 2px solid var(--shard);
+  padding-bottom: 4px;
+}
+.sim-lab-head b {
+  color: var(--shard);
+  font-size: 0.76rem;
+}
+.sim-acct {
+  all: unset;
+  cursor: pointer;
+  display: grid;
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--shard);
+  border-radius: 5px;
+  padding: 3px 6px;
+  min-width: 0;
+}
+.sim-acct .h {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+.sim-acct .n {
+  color: var(--warn);
+  font-size: 0.66rem;
+}
+.sim-acct.moved {
+  background: var(--warn-soft);
+}
+.sim-acct.fresh {
+  background: var(--accent-soft);
+}
+.sim-acct.fresh .n {
+  color: var(--accent);
+}
+.sim-acct.on {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.sim-acct:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.sim-cmp tr.sim-row-on td {
+  background: var(--accent-soft);
+}
+.sim-cmp td.sim-cell-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* two-phase commit lab */
+.sim-tx-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+@media (max-width: 620px) {
+  .sim-tx-stage {
+    grid-template-columns: 1fr;
+  }
+}
+.sim-tx-ledger {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+.sim-tx-ledger.held {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+.sim-tx-ledger b {
+  font-family: var(--f-display);
+  font-size: 1.5rem;
+}
+.sim-tx-name,
+.sim-tx-note {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.sim-tx-ledger.held .sim-tx-note {
+  color: var(--warn);
+}
+.sim-tx-mid {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-family: var(--f-mono);
+  font-size: 0.76rem;
+  padding: 6px;
+}
+.sim-tx-reader {
+  display: grid;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.sim-tx-reader span {
+  font-weight: 400;
+  font-size: 0.82rem;
+}
+.sim-tx-reader.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.sim-tx-reader.wait {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.sim-tx-reader.short {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.sim-tx-strip {
+  display: flex;
+  gap: 3px;
+}
+.sim-tx-strip button {
+  all: unset;
+  cursor: pointer;
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+}
+.sim-tx-strip .ok,
+.sim-tx-legend .ok::before {
+  background: var(--ok);
+}
+.sim-tx-strip .wait,
+.sim-tx-legend .wait::before {
+  background: var(--warn);
+}
+.sim-tx-strip .short,
+.sim-tx-legend .short::before {
+  background: var(--bad);
+}
+.sim-tx-strip .cur {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.sim-tx-strip button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.sim-tx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.sim-tx-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 4px;
 }

@@ -118,7 +118,7 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Optimistic Concurrency Control (version/CAS checks)
 - [ ] Distributed Locking
 - [ ] Saga Pattern (orchestration vs choreography)
-- [ ] Two-Phase Commit vs Eventual Consistency
+- [x] Two-Phase Commit vs Eventual Consistency
 - [ ] Event Sourcing + Append-Only Ledger
 - [ ] CQRS
 - [ ] Exactly-Once Processing via Deduplication
@@ -127,7 +127,7 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Rate Limiting (token bucket / sliding window)
 - [ ] Circuit Breaker + Bulkhead
 - [ ] Backpressure in Queues
-- [ ] Sharding/Partitioning
+- [x] Sharding/Partitioning
 - [ ] Consistent Hashing
 - [ ] Caching for Low-Latency Reads
 - [ ] Reconciliation & Settlement Batch Jobs

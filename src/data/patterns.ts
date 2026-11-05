@@ -30,6 +30,11 @@ export const patternGroups: PatternGroup[] = [
         title: 'Sharding & Partitioning',
         summary: 'Split data across shards without creating hotspots or a resharding storm.',
       },
+      {
+        slug: 'two-phase-commit',
+        title: 'Two-Phase Commit vs Eventual Consistency',
+        summary: 'Move money across two databases: make everyone wait, or let everyone see the gap.',
+      },
     ],
   },
 ]
