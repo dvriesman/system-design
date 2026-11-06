@@ -51,6 +51,11 @@ export const patternGroups: PatternGroup[] = [
         title: 'OAuth 2.0 Authorization Code + PKCE',
         summary: 'Let an app act for you without your password, and keep a stolen code useless.',
       },
+      {
+        slug: 'step-up-authentication',
+        title: 'Step-Up Authentication',
+        summary: 'Ask for more proof at the moment it matters, such as a withdrawal, not just at login.',
+      },
     ],
   },
 ]

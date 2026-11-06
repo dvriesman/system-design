@@ -24,6 +24,8 @@ their own decisions — the way they'd debug a real system.
 - Simple top bar with the application title.
 - Left sidebar with groups and submenus, one entry per pattern (`src/data/patterns.ts` is the single source of
   truth driving both the sidebar and the routes).
+- Light and dark themes. A top-bar toggle sets `data-theme` on `<html>` and remembers the choice; until then it follows
+  the system setting. New styles should use the `dark:` variant or the `.sim` custom properties, not `prefers-color-scheme`.
 - No footer. Denny's name lives in the **top bar**, right-aligned, as a link to his LinkedIn profile
   (`linkedin.com/in/dvriesman`) — this app doubles as a self-promotion/portfolio piece, not just a teaching tool, so
   his identity should be visible without scrolling. On narrow screens the link collapses to just the icon so it
@@ -86,6 +88,11 @@ If a pattern's mechanics don't naturally support one of the above (e.g. no "comp
 fine to omit that piece — but don't omit pieces just to save effort. The Outbox/Idempotency pages are the floor, not
 the ceiling.
 
+**The highlighted line is about to run, as in a real debugger.** The simulations store each step's state after its line
+has run, so pages must not read `step.s` or `step.locals` directly: use `debuggerView()` from `src/pages/debuggerView.ts`,
+which shows the state from before the highlighted line. Use `useFollowExecution()`, the `sim-debug` and `sim-debug-head`
+classes, and `sim-vars` on the Variables panel, so that stepping never makes the reader scroll.
+
 **Every line that mutates state must actually mutate it.** When a code line's text implies a state change (an
 `insert`, `update`, assignment), its `push()`/step call must carry the effect function that performs it — don't let
 the pane highlight a line while the state panel or variables panel silently fails to reflect what that line claims
@@ -142,7 +149,8 @@ Authentication (who are you?):
 - [ ] Refresh Token Rotation + Reuse Detection
 - [x] OAuth 2.0 Authorization Code + PKCE
 - [ ] OpenID Connect + Single Sign-On
-- [ ] Multi-Factor + Step-Up Authentication
+- [ ] Multi-Factor Authentication (a second factor at login)
+- [x] Step-Up Authentication (more proof mid-session, for high-risk actions such as withdrawals)
 - [ ] Credential Storage + Credential Stuffing Defense
 - [ ] API Keys + Signed Requests (HMAC, replay protection)
 - [ ] Service-to-Service Identity (mTLS, workload identity)

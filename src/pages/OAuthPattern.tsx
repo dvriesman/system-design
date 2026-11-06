@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { debuggerView, useFollowExecution } from './debuggerView'
 import '../styles/sim.css'
 import OAuthLab from './OAuthLab'
 import {
@@ -58,7 +59,9 @@ export default function OAuthPattern() {
   }, [cur])
 
   const step: Step = steps[safeCur]
-  const s = step.s
+  const view = debuggerView(steps, safeCur, PANES.map((pane) => CODE[mode][pane.id]))
+  const s = view.s
+  const benchRef = useFollowExecution(safeCur, steps)
   const final = step.label === 'end'
   const invariantChecks = checks(s)
   const hasCodes = mode !== 'implicit'
@@ -298,76 +301,73 @@ export default function OAuthPattern() {
         </p>
       </section>
 
-      <div className="sim-bench">
-        <div className="sim-toolbar">
-          <div className="sim-seg" role="group" aria-label="Design">
-            {MODES.map((m) => (
-              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
-                {m.label}
+      <div className="sim-bench sim-debug" ref={benchRef}>
+        <div className="sim-debug-head">
+          <div className="sim-toolbar">
+            <div className="sim-seg" role="group" aria-label="Design">
+              {MODES.map((m) => (
+                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div className="sim-ctl">
+              <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
+                |◀
+              </button>
+              <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
+                ◀
+              </button>
+              <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
+                Step ▶
+              </button>
+              <button
+                className="sim-btn ghost"
+                type="button"
+                onClick={() => {
+                  if (running) {
+                    setRunning(false)
+                    return
+                  }
+                  if (safeCur === steps.length - 1) setCur(0)
+                  setRunning(true)
+                }}
+              >
+                {running ? 'Pause ❚❚' : 'Run ▶▶'}
+              </button>
+              <span className="sim-pos">
+                {safeCur} / {steps.length - 1}
+              </span>
+            </div>
+          </div>
+
+          <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
+            {steps.map((st, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${i < safeCur ? 'done' : ''} ${
+                  i === safeCur ? 'cur' : ''
+                }`}
+                aria-label={`Go to step ${i}: ${st.title}`}
+                onClick={() => go(i)}
+              >
+                {i === 0 ? 'start' : lineLabel(st)}
               </button>
             ))}
           </div>
-          <div className="sim-ctl">
-            <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
-              |◀
-            </button>
-            <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
-              ◀
-            </button>
-            <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
-              Step ▶
-            </button>
-            <button
-              className="sim-btn ghost"
-              type="button"
-              onClick={() => {
-                if (running) {
-                  setRunning(false)
-                  return
-                }
-                if (safeCur === steps.length - 1) setCur(0)
-                setRunning(true)
-              }}
-            >
-              {running ? 'Pause ❚❚' : 'Run ▶▶'}
-            </button>
-            <span className="sim-pos">
-              {safeCur} / {steps.length - 1}
+
+          <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
+            <span className="who">
+              {view.pending ? 'about to run · ' : ''}
+              {step.actor && step.actor !== 'system' ? ACTOR_NAME[step.actor] : step.actor ? 'what happens next' : 'ready'}
+              {step.crash ? ' · process killed' : ''}
             </span>
+            <b className="t">{step.title}</b>
+            <span>{step.text ?? ''}</span>
           </div>
-        </div>
 
-        <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
-          {steps.map((st, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${i < safeCur ? 'done' : ''} ${
-                i === safeCur ? 'cur' : ''
-              }`}
-              aria-label={`Go to step ${i}: ${st.title}`}
-              onClick={() => go(i)}
-            >
-              {i === 0 ? 'start' : lineLabel(st)}
-            </button>
-          ))}
-        </div>
 
-        <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
-          <span className="who">
-            {step.actor && step.actor !== 'system' ? ACTOR_NAME[step.actor] : step.actor ? 'what happens next' : 'ready'}
-            {step.crash ? ' · process killed' : ''}
-          </span>
-          <b className="t">{step.title}</b>
-          <span>{step.text ?? ''}</span>
-        </div>
-
-        <div className="sim-store">
-          <h3>
-            <span>Browser address bar</span>
-            <span className="sim-tag">treat everything here as public</span>
-          </h3>
-          {s.url ? <div className="sim-jwt-token">{s.url}</div> : <div className="sim-empty">no page open</div>}
         </div>
 
         <div className="sim-grid">
@@ -399,11 +399,11 @@ export default function OAuthPattern() {
               </div>
             ))}
 
-            <div className="sim-store">
+            <div className="sim-store sim-vars">
               <h3>
                 <span>Variables · {step.actor && step.actor !== 'system' ? `${ACTOR_NAME[step.actor]}'s call` : 'no call running'}</span>
               </h3>
-              {Object.keys(step.locals).length ? (
+              {Object.keys(view.locals).length ? (
                 <div className="sim-tw">
                   <table>
                     <thead>
@@ -413,7 +413,7 @@ export default function OAuthPattern() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(step.locals).map(([name, value]) => (
+                      {Object.entries(view.locals).map(([name, value]) => (
                         <tr key={name}>
                           <td>{name}</td>
                           <td>{value}</td>
@@ -429,6 +429,14 @@ export default function OAuthPattern() {
           </div>
 
           <div className="sim-col">
+            <div className="sim-store">
+                <h3>
+                  <span>Browser address bar</span>
+                  <span className="sim-tag">treat everything here as public</span>
+                </h3>
+                {s.url ? <div className="sim-jwt-token">{s.url}</div> : <div className="sim-empty">no page open</div>}
+              </div>
+
             <div className="sim-store">
               <h3>
                 <span>Alice's transactions</span>
