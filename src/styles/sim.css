@@ -1087,3 +1087,71 @@
   border-radius: 2px;
   margin-right: 4px;
 }
+
+/* sessions vs JWTs lab */
+.sim-lab-value {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.sim-jwt-token {
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  background: var(--code-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.sim-jwt-token .h,
+.sim-jwt-parts .h b {
+  color: var(--svc);
+}
+.sim-jwt-token .p,
+.sim-jwt-parts .p b {
+  color: var(--migrator);
+}
+.sim-jwt-token .s,
+.sim-jwt-parts .s b {
+  color: var(--cons);
+}
+.sim-jwt-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+.sim-jwt-parts > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+.sim-jwt-parts b {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+}
+.sim-jwt-parts pre {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+}
+
+.sim-grid > .sim-store {
+  align-content: start;
+}
+/* Long lines wrap instead of scrolling, with continuation lines indented. */
+.sim-code.wrap .sim-ln {
+  grid-template-columns: 28px 34px minmax(0, 1fr);
+  align-items: start;
+}
+.sim-code.wrap pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  padding-left: 2ch;
+  text-indent: -2ch;
+}

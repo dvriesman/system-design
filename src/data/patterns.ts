@@ -37,4 +37,20 @@ export const patternGroups: PatternGroup[] = [
       },
     ],
   },
+  {
+    slug: 'security',
+    title: 'Security: Authentication & Authorization',
+    patterns: [
+      {
+        slug: 'sessions-vs-jwts',
+        title: 'Sessions vs JWTs',
+        summary: 'Recognize a user on every request: look it up each time, or give up the power to cancel it.',
+      },
+      {
+        slug: 'oauth-pkce',
+        title: 'OAuth 2.0 Authorization Code + PKCE',
+        summary: 'Let an app act for you without your password, and keep a stolen code useless.',
+      },
+    ],
+  },
 ]
