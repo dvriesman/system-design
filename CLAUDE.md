@@ -12,7 +12,7 @@ their own decisions — the way they'd debug a real system.
 - **React + Vite + TypeScript** — no Next.js, kept deliberately simple (no SSR/server runtime needed; this is a
   static, client-rendered app).
 - **React Router** for client-side routing between pattern pages.
-- **Tailwind** for the app shell (top bar, sidebar, footer). Pattern pages share one scoped "debugger workbench"
+- **Tailwind** for the app shell (top bar, sidebar). Pattern pages share one scoped "debugger workbench"
   stylesheet, `src/styles/sim.css` (custom properties for theming, `.sim-*` classes) — reuse it rather than writing
   new per-page CSS.
 - **Vercel** for hosting. `vercel.json` has a catch-all rewrite to `index.html` (required for SPA client-side routes
@@ -36,9 +36,32 @@ their own decisions — the way they'd debug a real system.
   from is itself personalized — match its mechanics and depth, strip the branding.
 
 ## The bar for a pattern page
-The **Transactional Outbox** page (`src/pages/OutboxPattern.tsx`) and **Idempotency Keys** page
-(`src/pages/IdempotencyPattern.tsx`) are the reference implementations. Every new pattern page should hit this bar,
-not a simplified version of it. Concretely, a pattern page is a **debugger workbench**, not a slideshow:
+**Step-Up Authentication** (`src/pages/StepUpPattern.tsx`, `StepUpLab.tsx`, `stepUpSim.ts`) is the best reference for a
+new page, followed by OAuth + PKCE and Sessions vs JWTs. Outbox and Idempotency Keys set the original debugger bar, but
+they don't have the newer page shape below yet. Every new pattern page should hit this bar, not a simplified version of it.
+
+### Page shape: teach one concept at a time
+Denny found rigorous pages hard to enter when the failure simulation came first or two decisions were mixed together.
+So a page goes from simple to hard, and the hardest part comes last:
+
+1. **Header:** a plain question the pattern answers, and links to each part.
+2. **Part 1, a simple lab with nothing failing:** explain the mechanism from scratch, as if the reader has never seen it
+   (what a hash is, what `% N` does, what a signature is). Use tabs, with each tab fixing what the previous one leaves open,
+   and a stepper. Add one hands-on widget using real computation where possible: a real HS256 token to tamper with,
+   real SHA-256 for PKCE, or real response headers. End with a one-sentence idea and a comparison table.
+3. **Part 2, when is it worth it?** Concrete cases with a real finance example, including cases where the answer is "no" or
+   "use something else". Add a table for deciding, and myths worth dropping.
+4. **Part 3, the debugger:** one fixed story through every mode, as specified below.
+5. **"What you just debugged":** one card per mode, then "each fix moves the responsibility somewhere".
+6. **A named real product, where it helps** (e.g. Keycloak), and **"How do you build this for real?"** Denny asks how things
+   are really implemented, so always include this: real code shape, production pitfalls, and what the real systems do.
+7. **Glossary, "Say it in the interview", and a footer** listing what the simulation simplifies, and the sources.
+
+Don't put two independent decisions in front of the reader at once. On Sharding, placement and live migration were
+confusing together, so they became separate parts.
+
+### The debugger
+A pattern page's debugger is a **workbench**, not a slideshow:
 
 1. **Competing approaches, not just one — and go all the way to the actual best answer.** Where the pattern exists
    to fix a naive approach, show the naive approach(es) too, as switchable modes (e.g. "publish after commit" /
@@ -46,7 +69,11 @@ not a simplified version of it. Concretely, a pattern page is a **debugger workb
    the pattern — don't skip straight to the fix. There is no fixed number of modes: if the "textbook" fix (e.g.
    atomic reserve via a unique constraint) still has a real remaining gap, add another mode that closes it (e.g.
    propagating the idempotency key to the downstream API too) rather than presenting a known-incomplete fix as the
-   final answer.
+   final answer. This includes going past a standard when it leaves a gap: PKCE doesn't prove which app is asking, so
+   OAuth adds a verified redirect, and RFC 9470 doesn't bind an approval to a payment, so Step-Up adds that.
+   Show that a naive "fix" can fail too, such as a secret shipped in a public app, or a prompt only on the screen.
+   Don't force a single winner when the answer depends on the system: Sessions vs JWTs has no "best" mode, and the
+   shared store gets a good verdict despite a broken check, on purpose.
    **Keep the code shape as parallel as possible across modes.** When mode N+1 builds on mode N's mechanism (rather
    than replacing it), reuse the exact same line/variable/call where the mechanism is unchanged, so the only visible
    diff between tabs is the thing that actually changed. Don't let an unrelated simplification (e.g. removing a
@@ -72,9 +99,10 @@ not a simplified version of it. Concretely, a pattern page is a **debugger workb
 7. **An invariants panel.** The properties the pattern is supposed to guarantee (no lost events, no duplicates,
    no double-spend, etc.) are shown as live checks (holds / broken / pending-until-run-finishes), not just asserted
    in prose.
-8. **A narrative panel** in plain language explaining what just happened at the current step, and why — written for
-   someone learning the mechanism, not just logging state deltas.
-9. **A console log** of every actor action, for a lower-level trace alongside the narrative.
+8. **A narrative panel** in plain language explaining what the highlighted line does, and why — written for someone
+   learning the mechanism, not just logging state deltas. Every step needs text: never an empty narrative.
+9. **A console log** of every actor action, for a lower-level trace alongside the narrative. Show readable actor names,
+   never internal ids such as `svc`.
 10. **Curated "experiments to run"** — preset buttons that jump straight to the 4-6 most instructive failure
     scenarios for this pattern (the ones worth remembering), on top of free-form breakpoint exploration.
 11. **Below the simulation:** a short conceptual write-up — the problem it solves, the fix, the price/trade-off you
@@ -85,13 +113,15 @@ not a simplified version of it. Concretely, a pattern page is a **debugger workb
     panes, state panels, console, and timeline.
 
 If a pattern's mechanics don't naturally support one of the above (e.g. no "competing naive approach" exists), it's
-fine to omit that piece — but don't omit pieces just to save effort. The Outbox/Idempotency pages are the floor, not
-the ceiling.
+fine to omit that piece — but don't omit pieces just to save effort.
 
 **The highlighted line is about to run, as in a real debugger.** The simulations store each step's state after its line
 has run, so pages must not read `step.s` or `step.locals` directly: use `debuggerView()` from `src/pages/debuggerView.ts`,
 which shows the state from before the highlighted line. Use `useFollowExecution()`, the `sim-debug` and `sim-debug-head`
-classes, and `sim-vars` on the Variables panel, so that stepping never makes the reader scroll.
+classes, and `sim-vars` on the Variables panel, so that stepping never makes the reader scroll. The Step button, the
+current line, the variables and what just changed must all stay on screen on desktop. Use `sim-code wrap` so code lines wrap.
+Denny raised this after having to scroll up and down on every step, and after seeing values change while their line was
+still highlighted.
 
 **Every line that mutates state must actually mutate it.** When a code line's text implies a state change (an
 `insert`, `update`, assignment), its `push()`/step call must carry the effect function that performs it — don't let
@@ -115,6 +145,26 @@ reads as a contradiction, not a subtlety.
 system to do the hard part (e.g. propagating an idempotency key so the payment processor does its own atomic
 claim), say so explicitly on the page — name the mechanism the downstream system must implement, and what happens
 if it doesn't. Never let a simplification read as "and now this concern just isn't a concern anymore."
+
+**A crash shouldn't change a security or correctness outcome by accident.** After a crash, the run must recover and still
+reach a meaningful end. If a crash does change the result, that has to be the lesson, and the verdict has to say so.
+
+**A panel has to teach something.** If a panel shows the same value on every step, replace or remove it. Verdicts and
+labels must match what's on screen: no green "works" beside a broken check, unless the page explains why that's right.
+
+### Writing the content
+- **Check facts against primary sources before publishing**, because this is a public site: RFCs, official product docs and
+  regulations. Say which RFC a page relies on. Never state a product default from memory: if the docs don't confirm it,
+  describe it in general terms and tell readers to check their own settings.
+- **Don't overclaim.** "The parts of the guide checked for this page don't mention X" is fine; "X isn't supported" needs
+  proof. Write the page in the third person: never "I" or "I checked".
+- **Denny's experience is a source.** When he describes a real strategy (Keycloak sessions alongside JWTs, a per-user
+  forced-logout timestamp in Redis, checks at Istio, OPA or the backend), add it to the page, and add the failure details he
+  may not have mentioned, such as ordering, key expiry and clock differences. Never mention his employers or that he
+  worked with it. Naming a public product such as Keycloak is fine when he asks for it.
+- **Answer a question before changing anything** when he asks one, or says not to write yet. He often asks how something
+  really works, and then asks for it on the page.
+- **Match the plain, direct style of the newer pages.** Explain terms when they first appear, and add them to the glossary.
 
 ## Content roadmap
 First content group: **Finance: High-Throughput & Low-Latency**, because idempotency and double-spend prevention are
@@ -178,15 +228,53 @@ the run starts, a code line highlighted but not wired to any state change, a bra
 outcome, a confusing variable that turned out not to belong in the lesson at all, and a later mode that silently
 dropped a mechanism an earlier mode established). None of these were caught by `tsc` or `oxlint` — they're
 behavioral bugs, not type errors. Before calling a pattern page done:
-1. `npm run build` and `npm run lint` (catches real but narrow classes of error).
-2. Trace the simulation logic directly, e.g. `npx tsx -e "import { build, verdictText } from './src/pages/<x>Sim.ts'; ..."`,
-   printing the final state for every `DEFAULT_CRASH` and every entry in `EXPERIMENTS` (and ideally the full
-   per-step trace for at least the default one) — confirm charge/duplicate counts, `resolved`, and `verdict` text
-   are what the page's prose claims they are.
-3. Still expect Denny to find something a script can't catch (visual inconsistency, a confusing variable, a
-   narrative that doesn't match what's on screen) — that's the actual final QA pass for this project, not a sign
-   something was done carelessly. No browser access has been available in this session, so step 2 is the only
-   verification possible before his pass.
+1. `npm run build` and `npm run lint` (catches real but narrow classes of error). The `set-state-in-effect` warnings on the
+   auto-play effect are known.
+2. Brute-force the simulation with a `npx tsx` script: **every mode × every breakable line**. Assert one crash per run,
+   no check left pending, no line id missing from the code panes, and outcomes unchanged by crashes unless that's the lesson.
+   Print every experiment's checks and verdict, plus a full per-step trace for the main modes, and read them. Also list
+   lines that are never highlighted.
+3. Drive the page in headless Chrome: `playwright-core` with `channel: 'chrome'`, kept in the session scratchpad, not the
+   repo. Click through every experiment and gutter dot, and step through at desktop, laptop and phone sizes. Check for page
+   errors, sideways overflow and whether the current line stays visible.
+4. **Read the screenshots**, in light, dark and mobile. Most of the remaining bugs were found this way: clipped code,
+   wrong labels, a panel that never changes, a misleading verdict. When a test fails oddly, check the test too: one
+   "sideways scroll" failure on every step turned out to be a bug in the test.
+5. Deploy, then check the live site as well, not only the local build.
+6. Still expect Denny to find something a script can't catch (visual inconsistency, a confusing variable, a narrative
+   that doesn't match what's on screen). That's the actual final QA pass for this project, not a sign something was done
+   carelessly. `test-as-learner` runs only when he invokes it.
+
+When reporting back, say what was and wasn't tested, flag what's worth his attention, and don't claim a check you didn't run.
+
+### Deploying
+Deploy with the CLI, and don't wait on it, because a waiting deploy has hung for many minutes on this small project:
+
+```sh
+VERCEL_ORG_ID=... VERCEL_PROJECT_ID=... npx --yes vercel@latest deploy --prod --yes --no-wait </dev/null
+```
+
+Then poll the production URL until its JS bundle contains a string that's new in this change (usually live in about 20
+seconds). The app's address is https://system-design-nine-flax.vercel.app. Deploys so far have been made by hand from the working
+tree, so a merge may not deploy anything: deploy after merging, and confirm it. This is a single-page app, so a tab that's
+already open keeps the old code until it's reloaded, even when navigating between pages. If Denny sees the old version, first
+compare what production serves with what he's looking at, and ask him to do a full reload.
+
+### Git
+- Commit, push, open a PR or merge only when Denny asks. He usually asks once a batch of work looks right, so production
+  can be ahead of GitHub in between, and that's worth mentioning.
+- Never work on `main`: create a branch first. Merge PRs with a regular merge commit, then sync local `main`.
+- The repo has no CI, so a green PR means nothing has been run. Run the build yourself before merging.
+- Don't delete merged branches unless he asks.
+
+### Technical notes
+- A sticky child of a CSS grid is confined to its own row, so the debugger's columns use flex.
+- Grid tracks grow to fit `nowrap` content, which can make the whole page overflow sideways on phones. Use
+  `minmax(0, 1fr)`, and `min-width: 0` on flex children.
+- The theme is set by an inline script in `index.html` before first paint. Don't reintroduce `prefers-color-scheme` in CSS.
+- `sessionsCrypto.ts` has real SHA-256, HMAC and base64url for the labs. Check it against Node's crypto and published test
+  vectors. It's for teaching only, and the pages tell readers to use vetted libraries.
+- Simulations label values with short IDs (`tok-1`, `hash(ver-1)`). Say so in the page footer.
 
 ## Future ideas (not scheduled)
 Raised by Denny, explicitly deferred — don't start on these unless he brings them up again:
