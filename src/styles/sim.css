@@ -32,29 +32,27 @@
   padding: 0 clamp(16px, 4vw, 32px) 32px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .sim {
-    --bg: #0b111d;
-    --surface: #111a2a;
-    --ink: #e5ebf4;
-    --muted: #93a0b4;
-    --line: #233047;
-    --accent: #86a6ff;
-    --accent-soft: #1a2747;
-    --ok: #53c78f;
-    --ok-soft: #12291f;
-    --warn: #f0a94f;
-    --warn-soft: #2c2112;
-    --bad: #ff8277;
-    --bad-soft: #2e1614;
-    --code-bg: #0e1625;
-    --hl: #3a3212;
-    --svc: #86a6ff;
-    --relay: #c39bff;
-    --cons: #4fd1bd;
-    --router: #f2a35c;
-    --migrator: #e38ac4;
-  }
+[data-theme='dark'] .sim {
+  --bg: #0b111d;
+  --surface: #111a2a;
+  --ink: #e5ebf4;
+  --muted: #93a0b4;
+  --line: #233047;
+  --accent: #86a6ff;
+  --accent-soft: #1a2747;
+  --ok: #53c78f;
+  --ok-soft: #12291f;
+  --warn: #f0a94f;
+  --warn-soft: #2c2112;
+  --bad: #ff8277;
+  --bad-soft: #2e1614;
+  --code-bg: #0e1625;
+  --hl: #3a3212;
+  --svc: #86a6ff;
+  --relay: #c39bff;
+  --cons: #4fd1bd;
+  --router: #f2a35c;
+  --migrator: #e38ac4;
 }
 
 .sim h1,
@@ -1154,4 +1152,110 @@
   min-width: 0;
   padding-left: 2ch;
   text-indent: -2ch;
+}
+
+/* The debugger layout: controls and narrative stay put, and the code and state scroll inside their own columns. */
+.sim-debug,
+.sim-debug-head {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sim-debug-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  padding-block: 8px;
+  background: var(--bg);
+}
+.sim-debug-head .sim-narr {
+  min-height: 0;
+  max-height: 8.6em;
+  overflow-y: auto;
+}
+.sim-debug-head .sim-timeline {
+  padding-bottom: 4px;
+}
+@media (min-width: 901px) {
+  /* Flex, not grid: a sticky child of a grid is confined to its own row. */
+  .sim-debug .sim-grid > .sim-col {
+    display: flex;
+    flex-direction: column;
+    max-height: max(320px, calc(100vh - var(--sim-head-h, 260px) - 30px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+  }
+  .sim-debug .sim-grid > .sim-col > * {
+    flex-shrink: 0;
+  }
+  /* Variables stay beside the code, like a debugger's locals window. */
+  .sim-debug .sim-vars {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    max-height: calc(0.3 * (100vh - var(--sim-head-h, 260px)));
+    overflow-y: auto;
+    box-shadow: 0 -6px 12px -8px rgb(0 0 0 / 0.35);
+  }
+}
+@media (max-height: 800px) {
+  .sim-debug-head .sim-narr {
+    max-height: 6.6em;
+  }
+}
+@media (max-width: 900px) {
+  .sim-debug-head {
+    gap: 4px;
+    padding-block: 4px;
+  }
+  .sim-debug-head .sim-narr {
+    max-height: 5.4em;
+    padding: 6px 10px;
+  }
+  .sim-debug-head .sim-toolbar {
+    padding: 6px;
+    gap: 6px;
+  }
+  .sim-debug-head .sim-seg {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .sim-debug-head .sim-axis {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .sim-debug-head .sim-seg {
+    min-width: 0;
+  }
+  .sim-debug-head .sim-seg button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .sim-debug-head .sim-timeline {
+    padding-block: 2px;
+  }
+}
+
+/* What the last step changed. */
+@keyframes sim-flash {
+  from {
+    background-color: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  to {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+}
+.sim-changed,
+.sim-changed-row td {
+  animation: sim-flash 1.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sim-changed,
+  .sim-changed-row td {
+    animation: none;
+  }
 }

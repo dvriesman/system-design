@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { debuggerView, useFollowExecution } from './debuggerView'
 import '../styles/sim.css'
 import {
   ACTOR_LABEL,
@@ -50,7 +51,9 @@ export default function IdempotencyPattern() {
   }, [cur])
 
   const step: Step = steps[safeCur]
-  const s = step.s
+  const view = debuggerView(steps, safeCur, [svcLines])
+  const s = view.s
+  const benchRef = useFollowExecution(safeCur, steps)
   const final = step.label === 'end'
   const invariantChecks = checks(s, final)
 
@@ -97,68 +100,72 @@ export default function IdempotencyPattern() {
         </p>
       </div>
 
-      <div className="sim-bench">
-        <div className="sim-toolbar">
-          <div className="sim-seg" role="group" aria-label="Approach">
-            {MODES.map((m) => (
-              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
-                {m.label}
+      <div className="sim-bench sim-debug" ref={benchRef}>
+        <div className="sim-debug-head">
+          <div className="sim-toolbar">
+            <div className="sim-seg" role="group" aria-label="Approach">
+              {MODES.map((m) => (
+                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div className="sim-ctl">
+              <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
+                |◀
+              </button>
+              <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
+                ◀
+              </button>
+              <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
+                Step ▶
+              </button>
+              <button
+                className="sim-btn ghost"
+                type="button"
+                onClick={() => {
+                  if (running) {
+                    setRunning(false)
+                    return
+                  }
+                  if (safeCur === steps.length - 1) setCur(0)
+                  setRunning(true)
+                }}
+              >
+                {running ? 'Pause ❚❚' : 'Run ▶▶'}
+              </button>
+              <span className="sim-pos">
+                {safeCur} / {steps.length - 1}
+              </span>
+            </div>
+          </div>
+
+          <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
+            {steps.map((st, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
+                  i < safeCur ? 'done' : ''
+                } ${i === safeCur ? 'cur' : ''}`}
+                aria-label={`Go to step ${i}: ${st.title}`}
+                onClick={() => go(i)}
+              >
+                {i === 0 ? 'start' : lineLabel(st)}
               </button>
             ))}
           </div>
-          <div className="sim-ctl">
-            <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
-              |◀
-            </button>
-            <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
-              ◀
-            </button>
-            <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
-              Step ▶
-            </button>
-            <button
-              className="sim-btn ghost"
-              type="button"
-              onClick={() => {
-                if (running) {
-                  setRunning(false)
-                  return
-                }
-                if (safeCur === steps.length - 1) setCur(0)
-                setRunning(true)
-              }}
-            >
-              {running ? 'Pause ❚❚' : 'Run ▶▶'}
-            </button>
-            <span className="sim-pos">
-              {safeCur} / {steps.length - 1}
+
+          <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
+            <span className="who">
+              {view.pending ? 'about to run · ' : ''}
+              {step.actor ? ACTOR_LABEL[step.actor as Actor] ?? 'result' : 'ready'}
+              {step.crash ? ' · response lost' : ''}
             </span>
+            <b className="t">{step.title}</b>
+            <span>{step.text ?? ''}</span>
           </div>
-        </div>
 
-        <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
-          {steps.map((st, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
-                i < safeCur ? 'done' : ''
-              } ${i === safeCur ? 'cur' : ''}`}
-              aria-label={`Go to step ${i}: ${st.title}`}
-              onClick={() => go(i)}
-            >
-              {i === 0 ? 'start' : lineLabel(st)}
-            </button>
-          ))}
-        </div>
-
-        <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
-          <span className="who">
-            {step.actor ? ACTOR_LABEL[step.actor as Actor] ?? 'result' : 'ready'}
-            {step.crash ? ' · response lost' : ''}
-          </span>
-          <b className="t">{step.title}</b>
-          <span>{step.text ?? ''}</span>
         </div>
 
         <div className="sim-grid">
@@ -167,7 +174,7 @@ export default function IdempotencyPattern() {
               <h3>
                 <span>Payment service</span>
               </h3>
-              <div className="sim-code">
+              <div className="sim-code wrap">
                 {svcLines.map((l) => (
                   <div key={l.id} className={`sim-ln${step.actor === 'svc' && step.line === l.id ? ' cur' : ''}`}>
                     <span className="g">
@@ -188,12 +195,12 @@ export default function IdempotencyPattern() {
               </div>
             </div>
 
-            <div className="sim-store">
+            <div className="sim-store sim-vars">
               <h3>
                 <span>Variables · this call</span>
                 <span className="sim-tag">attempt {Math.max(1, step.attempt)}</span>
               </h3>
-              {Object.keys(step.locals).length ? (
+              {Object.keys(view.locals).length ? (
                 <div className="sim-tw">
                   <table>
                     <thead>
@@ -203,7 +210,7 @@ export default function IdempotencyPattern() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(step.locals).map(([name, value]) => (
+                      {Object.entries(view.locals).map(([name, value]) => (
                         <tr key={name}>
                           <td>{name}</td>
                           <td>{value}</td>

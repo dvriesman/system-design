@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { debuggerView, useFollowExecution } from './debuggerView'
 import '../styles/sim.css'
 import SessionsLab from './SessionsLab'
 import {
@@ -65,7 +66,9 @@ export default function SessionsPattern() {
   }, [cur])
 
   const step: Step = steps[safeCur]
-  const s = step.s
+  const view = debuggerView(steps, safeCur, [codeLines])
+  const s = view.s
+  const benchRef = useFollowExecution(safeCur, steps)
   const final = step.label === 'end'
   const invariantChecks = checks(s)
   const usesStore = mode !== 'memory' && mode !== 'jwt'
@@ -305,68 +308,72 @@ export default function SessionsPattern() {
         </p>
       </section>
 
-      <div className="sim-bench">
-        <div className="sim-toolbar">
-          <div className="sim-seg" role="group" aria-label="Design">
-            {MODES.map((m) => (
-              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
-                {m.label}
+      <div className="sim-bench sim-debug" ref={benchRef}>
+        <div className="sim-debug-head">
+          <div className="sim-toolbar">
+            <div className="sim-seg" role="group" aria-label="Design">
+              {MODES.map((m) => (
+                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div className="sim-ctl">
+              <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
+                |◀
+              </button>
+              <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
+                ◀
+              </button>
+              <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
+                Step ▶
+              </button>
+              <button
+                className="sim-btn ghost"
+                type="button"
+                onClick={() => {
+                  if (running) {
+                    setRunning(false)
+                    return
+                  }
+                  if (safeCur === steps.length - 1) setCur(0)
+                  setRunning(true)
+                }}
+              >
+                {running ? 'Pause ❚❚' : 'Run ▶▶'}
+              </button>
+              <span className="sim-pos">
+                {safeCur} / {steps.length - 1}
+              </span>
+            </div>
+          </div>
+
+          <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
+            {steps.map((st, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
+                  i < safeCur ? 'done' : ''
+                } ${i === safeCur ? 'cur' : ''}`}
+                aria-label={`Go to step ${i}: ${st.title}`}
+                onClick={() => go(i)}
+              >
+                {i === 0 ? 'start' : lineLabel(st)}
               </button>
             ))}
           </div>
-          <div className="sim-ctl">
-            <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
-              |◀
-            </button>
-            <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
-              ◀
-            </button>
-            <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
-              Step ▶
-            </button>
-            <button
-              className="sim-btn ghost"
-              type="button"
-              onClick={() => {
-                if (running) {
-                  setRunning(false)
-                  return
-                }
-                if (safeCur === steps.length - 1) setCur(0)
-                setRunning(true)
-              }}
-            >
-              {running ? 'Pause ❚❚' : 'Run ▶▶'}
-            </button>
-            <span className="sim-pos">
-              {safeCur} / {steps.length - 1}
+
+          <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
+            <span className="who">
+              {view.pending ? 'about to run · ' : ''}
+              {step.actor && step.actor !== 'system' ? ACTOR_NAME[step.actor] : step.actor ? 'what happens next' : 'ready'}
+              {step.crash ? ' · process killed' : ''} · +{s.clock} min
             </span>
+            <b className="t">{step.title}</b>
+            <span>{step.text ?? ''}</span>
           </div>
-        </div>
 
-        <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
-          {steps.map((st, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
-                i < safeCur ? 'done' : ''
-              } ${i === safeCur ? 'cur' : ''}`}
-              aria-label={`Go to step ${i}: ${st.title}`}
-              onClick={() => go(i)}
-            >
-              {i === 0 ? 'start' : lineLabel(st)}
-            </button>
-          ))}
-        </div>
-
-        <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
-          <span className="who">
-            {step.actor && step.actor !== 'system' ? ACTOR_NAME[step.actor] : step.actor ? 'what happens next' : 'ready'}
-            {step.crash ? ' · process killed' : ''} · +{s.clock} min
-          </span>
-          <b className="t">{step.title}</b>
-          <span>{step.text ?? ''}</span>
         </div>
 
         <div className="sim-grid">
@@ -375,7 +382,7 @@ export default function SessionsPattern() {
               <h3>
                 <span>API server</span>
               </h3>
-              <div className="sim-code">
+              <div className="sim-code wrap">
                 {codeLines.map((l) => (
                   <div key={l.id} className={`sim-ln${step.line === l.id ? ' cur' : ''}`}>
                     <span className="g">
@@ -396,11 +403,11 @@ export default function SessionsPattern() {
               </div>
             </div>
 
-            <div className="sim-store">
+            <div className="sim-store sim-vars">
               <h3>
                 <span>Variables · {step.actor && step.actor !== 'system' ? `${ACTOR_NAME[step.actor]}'s call` : 'no call running'}</span>
               </h3>
-              {Object.keys(step.locals).length ? (
+              {Object.keys(view.locals).length ? (
                 <div className="sim-tw">
                   <table>
                     <thead>
@@ -410,7 +417,7 @@ export default function SessionsPattern() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(step.locals).map(([name, value]) => (
+                      {Object.entries(view.locals).map(([name, value]) => (
                         <tr key={name}>
                           <td>{name}</td>
                           <td>{value}</td>
@@ -791,7 +798,7 @@ export default function SessionsPattern() {
           remaining lifetime.
         </div>
         <div className="sim-card">
-          <h3>Three ways to deal with that gap</h3>
+          <h3>Five ways to deal with that gap</h3>
           <div className="sim-cmp">
             <table>
               <thead>
@@ -827,6 +834,22 @@ export default function SessionsPattern() {
                   <td>A network call per request, and Keycloak is now in your request path</td>
                   <td>Mode 2</td>
                 </tr>
+                <tr>
+                  <td>
+                    <b>Forced-logout timestamp</b>
+                  </td>
+                  <td>Redis keeps a logout time per user, and any token issued before it is rejected</td>
+                  <td>A Redis read per request, and every device of that user is logged out</td>
+                  <td>Mode 5's check, with mode 2's lookup</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Token revocation list</b>
+                  </td>
+                  <td>Redis keeps the ID of each revoked token, and those tokens are rejected</td>
+                  <td>A Redis read per request, and you must know which tokens to list</td>
+                  <td>Mode 2's lookup</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -834,6 +857,155 @@ export default function SessionsPattern() {
             Back-channel logout needs a URL registered for each client. Without one, Keycloak has nowhere to send the news, and your backend never
             hears about the logout. Many systems use a mix: signature checks for ordinary reads, and introspection before moving money.
           </p>
+        </div>
+        <div className="sim-card">
+          <h3>Rejecting tokens with Redis</h3>
+          <p>
+            These last two options add one check after the signature check. Keycloak ends the session, which stops new tokens, and Redis rejects the
+            tokens already out there. A token stays valid only if it passes the signature check and the Redis check.
+          </p>
+          <pre className="sim-block">{`fun forceLogout(userId) {
+  keycloak.endAllSessions(userId)         // first: this stops new tokens
+  redis.set("logout:" + userId,
+    now + clockMargin,                    // iat is in whole seconds, and clocks differ
+    ttl = maxAccessTokenLifetime + clockMargin)
+}
+
+fun revokeToken(claims) =
+  redis.set("revoked:" + claims.jti, true, ttl = claims.exp - now)
+
+// on every request, after the signature check
+fun isRejected(claims): Boolean {
+  val logoutAt = redis.get("logout:" + claims.sub)
+  if (logoutAt != null && claims.iat <= logoutAt) return true
+  return redis.exists("revoked:" + claims.jti)
+}`}</pre>
+          <div className="sim-cmp">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Forced-logout timestamp</th>
+                  <th>Token revocation list</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <b>Stops</b>
+                  </td>
+                  <td>All of a user's tokens issued before that moment</td>
+                  <td>One specific token</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Best for</b>
+                  </td>
+                  <td>"Log out everywhere", such as a stolen laptop or a fired employee</td>
+                  <td>One known token, such as one found in a log</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Size in Redis</b>
+                  </td>
+                  <td>One key per logged-out user</td>
+                  <td>One key per revoked token</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>What you need to know</b>
+                  </td>
+                  <td>Only the user ID</td>
+                  <td>Each token's <code>jti</code>, so you need a record of what was issued</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Logging in again</b>
+                  </td>
+                  <td>Works once the clock margin has passed: a new token then has a later <code>iat</code></td>
+                  <td>Works: a new token has a new <code>jti</code></td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>When the key can expire</b>
+                  </td>
+                  <td>After the longest access token lifetime</td>
+                  <td>When that token expires</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="sim-small">
+            They work well together: the timestamp handles "this user is compromised", and the list handles "this one token leaked". Neither fits
+            logging out a single device, because one token ID won't cover the tokens refreshed after it, and a timestamp logs out every device. For
+            that, use a session ID, if your tokens carry one.
+          </p>
+          <h3>Where the check runs</h3>
+          <div className="sim-cmp">
+            <table>
+              <thead>
+                <tr>
+                  <th>Layer</th>
+                  <th>How it reaches Redis</th>
+                  <th>Trade-off</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <b>Istio</b>
+                  </td>
+                  <td>
+                    <code>RequestAuthentication</code> checks the token itself, so the Redis check goes in an external authorizer, called through a{' '}
+                    <code>CUSTOM</code> authorization policy
+                  </td>
+                  <td>One enforcement point at the mesh, and services don't change. Traffic that bypasses the mesh skips it</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>OPA</b>
+                  </td>
+                  <td>
+                    OPA has no built-in for Redis, so a policy usually calls a small service with <code>http.send</code>. It can also run as Istio's
+                    external authorizer
+                  </td>
+                  <td>The rule lives with your other policies, and there's one more network hop. Cached responses can delay a revocation</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>The backend</b>
+                  </td>
+                  <td>A Redis client, usually in shared middleware</td>
+                  <td>Simple and works without a mesh, but every service has to include it and stay up to date</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>What catches people out with this approach</h3>
+          <ul className="t">
+            <li>
+              <b>The order of the two steps.</b> End the session first, then write the timestamp. The other way round, a refresh that lands between the
+              two steps gets a token issued after the timestamp, and that token passes the check. If the Redis write fails, retry it, because both steps
+              are safe to repeat.
+            </li>
+            <li>
+              <b>Redis is now on the request path.</b> You have brought back mode 2's lookup and its dependency. Decide what happens when Redis is down:
+              for moving money, refuse the request. For low-risk reads, you might allow it and raise an alert, which accepts that a revoked token could
+              work during the outage.
+            </li>
+            <li>
+              <b>Reading from a replica.</b> A replica that's behind can miss a logout that was just written. Replicate quickly and monitor the lag, or read
+              from the primary for sensitive actions.
+            </li>
+            <li>
+              <b>An expiry that's too short.</b> The key must outlive the longest access token. If it expires too soon, old tokens become valid again. Check
+              this whenever token lifetimes change.
+            </li>
+            <li>
+              <b>Offline tokens.</b> Ending the session doesn't stop an offline token from getting new access tokens, and those have a later{' '}
+              <code>iat</code>, so they pass the timestamp check. Revoke them too.
+            </li>
+          </ul>
         </div>
         <div className="sim-card">
           <h3>What catches people out</h3>
@@ -1020,6 +1192,12 @@ fun authenticate(request): Claims? {
           <dd>Asking the login server whether a token is still active, instead of only checking its signature.</dd>
           <dt>Offline token</dt>
           <dd>A Keycloak refresh token that stays valid after logout, for work that runs while the user is away.</dd>
+          <dt>Forced-logout timestamp</dt>
+          <dd>A time stored per user. Any token issued before it is rejected, even with a valid signature.</dd>
+          <dt>Token revocation list</dt>
+          <dd>A list of specific revoked tokens, usually by their <code>jti</code>, also called a denylist.</dd>
+          <dt>iat / jti</dt>
+          <dd>Standard JWT claims: <code>iat</code> is when the token was issued, and <code>jti</code> is its unique ID.</dd>
           <dt>XSS / CSRF</dt>
           <dd>XSS is an attacker's script running in your page, which can read anything JavaScript can. CSRF tricks a browser into sending a request with its cookies.</dd>
         </dl>
@@ -1036,8 +1214,9 @@ fun authenticate(request): Claims? {
           more, and compare it with just using sessions."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "How do you log someone out of a JWT system?" Delete the refresh token and publish a revocation, or accept the wait until
-          expiry. Clearing the token on the client isn't enough. Follow-up #2: "HS256 or RS256?" With many services, use asymmetric signing, so that only
+          Follow-up they may ask: "How do you log someone out of a JWT system?" End the session or delete the refresh token, so no new tokens are issued. Then
+          either accept the wait until expiry, publish a revocation, or store a per-user logout time in Redis and reject tokens issued before it. Clearing the token
+          on the client isn't enough. Follow-up #2: "HS256 or RS256?" With many services, use asymmetric signing, so that only
           the auth service can mint tokens. Follow-up #3: "Should the JWT hold permissions?" Keep it to identity, or accept that those permissions go stale
           until it expires. Follow-up #4: "Where would you store it in a browser?" In an HttpOnly cookie with CSRF protection, not in localStorage, where
           any XSS can copy it.

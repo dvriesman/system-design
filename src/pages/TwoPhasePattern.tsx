@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { debuggerView, useFollowExecution } from './debuggerView'
 import '../styles/sim.css'
 import TwoPhaseLab from './TwoPhaseLab'
 import {
@@ -50,7 +51,7 @@ function CodePane({
       <h3>
         <span>{pane.name}</span>
       </h3>
-      <div className="sim-code">
+      <div className="sim-code wrap">
         {pane.lines.map((l) => (
           <div key={l.id} className={`sim-ln${currentLine === l.id ? ' cur' : ''}`}>
             <span className="g">
@@ -136,7 +137,9 @@ export default function TwoPhasePattern() {
   }, [cur])
 
   const step: Step = steps[safeCur]
-  const s = step.s
+  const debug = debuggerView(steps, safeCur, panes.map((pane) => pane.lines))
+  const s = debug.s
+  const benchRef = useFollowExecution(safeCur, steps)
   const final = step.label === 'end'
   const invariantChecks = checks(s)
   const view = readerView(s)
@@ -376,86 +379,90 @@ export default function TwoPhasePattern() {
         </p>
       </section>
 
-      <div className="sim-bench">
-        <div className="sim-toolbar">
-          <div className="sim-axes">
-            <div className="sim-seg" role="group" aria-label="Approach">
-              {MODES.map((m) => (
-                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
-                  {m.label}
-                </button>
-              ))}
+      <div className="sim-bench sim-debug" ref={benchRef}>
+        <div className="sim-debug-head">
+          <div className="sim-toolbar">
+            <div className="sim-axes">
+              <div className="sim-seg" role="group" aria-label="Approach">
+                {MODES.map((m) => (
+                  <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <label className="sim-chk">
+                <input
+                  type="checkbox"
+                  checked={closed}
+                  onChange={(e) => {
+                    setClosed(e.target.checked)
+                    setCur(0)
+                    setRunning(false)
+                  }}
+                />
+                Payee account is closed (Ledger B will refuse the credit)
+              </label>
             </div>
-            <label className="sim-chk">
-              <input
-                type="checkbox"
-                checked={closed}
-                onChange={(e) => {
-                  setClosed(e.target.checked)
-                  setCur(0)
-                  setRunning(false)
+            <div className="sim-ctl">
+              <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
+                |◀
+              </button>
+              <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
+                ◀
+              </button>
+              <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
+                Step ▶
+              </button>
+              <button
+                className="sim-btn ghost"
+                type="button"
+                onClick={() => {
+                  if (running) {
+                    setRunning(false)
+                    return
+                  }
+                  if (safeCur === steps.length - 1) setCur(0)
+                  setRunning(true)
                 }}
-              />
-              Payee account is closed (Ledger B will refuse the credit)
-            </label>
+              >
+                {running ? 'Pause ❚❚' : 'Run ▶▶'}
+              </button>
+              <span className="sim-pos">
+                {safeCur} / {steps.length - 1}
+              </span>
+            </div>
           </div>
-          <div className="sim-ctl">
-            <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
-              |◀
-            </button>
-            <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
-              ◀
-            </button>
-            <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
-              Step ▶
-            </button>
-            <button
-              className="sim-btn ghost"
-              type="button"
-              onClick={() => {
-                if (running) {
-                  setRunning(false)
-                  return
-                }
-                if (safeCur === steps.length - 1) setCur(0)
-                setRunning(true)
-              }}
-            >
-              {running ? 'Pause ❚❚' : 'Run ▶▶'}
-            </button>
-            <span className="sim-pos">
-              {safeCur} / {steps.length - 1}
+
+          {crash && !steps.some((st) => st.crash) ? (
+            <div className="sim-empty">The line you picked never runs in this scenario, so nothing crashes. Pick another dot, or change the payee switch.</div>
+          ) : null}
+
+          <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
+            {steps.map((st, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
+                  i < safeCur ? 'done' : ''
+                } ${i === safeCur ? 'cur' : ''}`}
+                aria-label={`Go to step ${i}: ${st.title}`}
+                onClick={() => go(i)}
+              >
+                {i === 0 ? 'start' : lineLabel(st)}
+              </button>
+            ))}
+          </div>
+
+          <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
+            <span className="who">
+              {debug.pending ? 'about to run · ' : ''}
+              {step.actor && step.actor !== 'system' ? panes.find((p) => p.actor === step.actor)?.name : step.actor ? 'system' : 'ready'}
+              {step.crash ? ' · process killed' : ''}
             </span>
+            <b className="t">{step.title}</b>
+            <span>{step.text ?? ''}</span>
           </div>
-        </div>
 
-        {crash && !steps.some((st) => st.crash) ? (
-          <div className="sim-empty">The line you picked never runs in this scenario, so nothing crashes. Pick another dot, or change the payee switch.</div>
-        ) : null}
-
-        <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
-          {steps.map((st, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
-                i < safeCur ? 'done' : ''
-              } ${i === safeCur ? 'cur' : ''}`}
-              aria-label={`Go to step ${i}: ${st.title}`}
-              onClick={() => go(i)}
-            >
-              {i === 0 ? 'start' : lineLabel(st)}
-            </button>
-          ))}
-        </div>
-
-        <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
-          <span className="who">
-            {step.actor && step.actor !== 'system' ? panes.find((p) => p.actor === step.actor)?.name : step.actor ? 'system' : 'ready'}
-            {step.crash ? ' · process killed' : ''}
-          </span>
-          <b className="t">{step.title}</b>
-          <span>{step.text ?? ''}</span>
         </div>
 
         <div className="sim-grid">
@@ -470,13 +477,13 @@ export default function TwoPhasePattern() {
               />
             ))}
 
-            <div className="sim-store">
+            <div className="sim-store sim-vars">
               <h3>
                 <span>
                   Variables · {step.actor && step.actor !== 'system' ? panes.find((p) => p.actor === step.actor)?.name : 'no process running'}
                 </span>
               </h3>
-              {Object.keys(step.locals).length ? (
+              {Object.keys(debug.locals).length ? (
                 <div className="sim-tw">
                   <table>
                     <thead>
@@ -486,7 +493,7 @@ export default function TwoPhasePattern() {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(step.locals).map(([name, value]) => (
+                      {Object.entries(debug.locals).map(([name, value]) => (
                         <tr key={name}>
                           <td>{name}</td>
                           <td>{value}</td>

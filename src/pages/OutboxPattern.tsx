@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { debuggerView, useFollowExecution } from './debuggerView'
 import '../styles/sim.css'
 import {
   APP,
@@ -48,7 +49,7 @@ function CodePane({ name, lines, cls, down, currentLine, crash, onToggleBreak }:
         <span>{name}</span>
         <span className="st">{down ? <span className="sim-down">process dead</span> : ''}</span>
       </h3>
-      <div className="sim-code">
+      <div className="sim-code wrap">
         {lines.map((l) => (
           <div key={l.id} className={`sim-ln${currentLine === l.id ? ' cur' : ''}${l.off ? ' off' : ''}`}>
             <span className="g">
@@ -99,7 +100,9 @@ export default function OutboxPattern() {
   }, [cur])
 
   const step: Step = steps[safeCur]
-  const s = step.s
+  const view = debuggerView(steps, safeCur, [])
+  const s = view.s
+  const benchRef = useFollowExecution(safeCur, steps)
 
   function go(i: number) {
     setRunning(false)
@@ -157,72 +160,76 @@ export default function OutboxPattern() {
         </p>
       </div>
 
-      <div className="sim-bench">
-        <div className="sim-toolbar">
-          <div className="sim-seg" role="group" aria-label="Approach">
-            {MODES.map((m) => (
-              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
-                {m.label}
+      <div className="sim-bench sim-debug" ref={benchRef}>
+        <div className="sim-debug-head">
+          <div className="sim-toolbar">
+            <div className="sim-seg" role="group" aria-label="Approach">
+              {MODES.map((m) => (
+                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => switchMode(m.id)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div className="sim-ctl">
+              <label className="sim-chk">
+                <input type="checkbox" checked={dedupe} onChange={(e) => setDedupeAndReset(e.target.checked)} /> Idempotent
+                consumer
+              </label>
+              <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
+                |◀
+              </button>
+              <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
+                ◀
+              </button>
+              <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
+                Step ▶
+              </button>
+              <button
+                className="sim-btn ghost"
+                type="button"
+                onClick={() => {
+                  if (running) {
+                    setRunning(false)
+                    return
+                  }
+                  if (safeCur === steps.length - 1) setCur(0)
+                  setRunning(true)
+                }}
+              >
+                {running ? 'Pause ❚❚' : 'Run ▶▶'}
+              </button>
+              <span className="sim-pos">
+                {safeCur} / {steps.length - 1}
+              </span>
+            </div>
+          </div>
+
+          <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
+            {steps.map((st, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
+                  i < safeCur ? 'done' : ''
+                } ${i === safeCur ? 'cur' : ''}`}
+                aria-label={`Go to step ${i}: ${st.title}`}
+                onClick={() => go(i)}
+              >
+                {i === 0 ? 'start' : lineLabel(st)}
               </button>
             ))}
           </div>
-          <div className="sim-ctl">
-            <label className="sim-chk">
-              <input type="checkbox" checked={dedupe} onChange={(e) => setDedupeAndReset(e.target.checked)} /> Idempotent
-              consumer
-            </label>
-            <button className="sim-btn ghost" type="button" aria-label="Back to start" onClick={() => go(0)} disabled={safeCur === 0}>
-              |◀
-            </button>
-            <button className="sim-btn ghost" type="button" aria-label="Step back" onClick={() => go(safeCur - 1)} disabled={safeCur === 0}>
-              ◀
-            </button>
-            <button className="sim-btn" type="button" onClick={() => go(safeCur + 1)} disabled={safeCur === steps.length - 1}>
-              Step ▶
-            </button>
-            <button
-              className="sim-btn ghost"
-              type="button"
-              onClick={() => {
-                if (running) {
-                  setRunning(false)
-                  return
-                }
-                if (safeCur === steps.length - 1) setCur(0)
-                setRunning(true)
-              }}
-            >
-              {running ? 'Pause ❚❚' : 'Run ▶▶'}
-            </button>
-            <span className="sim-pos">
-              {safeCur} / {steps.length - 1}
+
+          <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
+            <span className="who">
+              {view.pending ? 'about to run · ' : ''}
+              {step.actor ? ACTOR_NAME[step.actor] : 'ready'}
+              {step.crash ? ' · process killed' : ''}
             </span>
+            <b className="t">{step.title}</b>
+            <span>{step.text ?? ''}</span>
           </div>
-        </div>
 
-        <div className="sim-timeline" ref={timelineRef} aria-label="Execution timeline">
-          {steps.map((st, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sim-chip ${st.actor && st.actor !== 'system' ? st.actor : ''} ${st.crash ? 'crash' : ''} ${
-                i < safeCur ? 'done' : ''
-              } ${i === safeCur ? 'cur' : ''}`}
-              aria-label={`Go to step ${i}: ${st.title}`}
-              onClick={() => go(i)}
-            >
-              {i === 0 ? 'start' : lineLabel(st)}
-            </button>
-          ))}
-        </div>
-
-        <div className={`sim-narr${step.crash ? ' crash' : ''}`} aria-live="polite">
-          <span className="who">
-            {step.actor ? ACTOR_NAME[step.actor] : 'ready'}
-            {step.crash ? ' · process killed' : ''}
-          </span>
-          <b className="t">{step.title}</b>
-          <span>{step.text ?? ''}</span>
         </div>
 
         <div className="sim-grid">
