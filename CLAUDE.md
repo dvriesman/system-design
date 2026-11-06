@@ -118,7 +118,7 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Optimistic Concurrency Control (version/CAS checks)
 - [ ] Distributed Locking
 - [ ] Saga Pattern (orchestration vs choreography)
-- [ ] Two-Phase Commit vs Eventual Consistency
+- [x] Two-Phase Commit vs Eventual Consistency
 - [ ] Event Sourcing + Append-Only Ledger
 - [ ] CQRS
 - [ ] Exactly-Once Processing via Deduplication
@@ -127,10 +127,34 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Rate Limiting (token bucket / sliding window)
 - [ ] Circuit Breaker + Bulkhead
 - [ ] Backpressure in Queues
-- [ ] Sharding/Partitioning
+- [x] Sharding/Partitioning
 - [ ] Consistent Hashing
 - [ ] Caching for Low-Latency Reads
 - [ ] Reconciliation & Settlement Batch Jobs
+
+Second content group: **Security: Authentication & Authorization**, because the failures are concrete and work well in
+the debugger format (a stolen token that keeps working, a revoked permission still cached, one tenant reading another's
+data). Authentication first, since authorization depends on knowing who is calling.
+
+Authentication (who are you?):
+
+- [x] Sessions vs JWTs (server-side state vs self-contained tokens, and revocation)
+- [ ] Refresh Token Rotation + Reuse Detection
+- [x] OAuth 2.0 Authorization Code + PKCE
+- [ ] OpenID Connect + Single Sign-On
+- [ ] Multi-Factor + Step-Up Authentication
+- [ ] Credential Storage + Credential Stuffing Defense
+- [ ] API Keys + Signed Requests (HMAC, replay protection)
+- [ ] Service-to-Service Identity (mTLS, workload identity)
+
+Authorization (what are you allowed to do?):
+
+- [ ] RBAC vs ABAC vs ReBAC
+- [ ] Policy Enforcement + Decision Points (centralized vs embedded)
+- [ ] Permission Caching + Revocation Propagation
+- [ ] Multi-Tenant Isolation (row-level security)
+- [ ] Delegated Access (scopes, token exchange, acting on behalf of a user)
+- [ ] Maker-Checker Approvals (four-eyes principle)
 
 Each pattern links to 2-3 related patterns so the sidebar order doubles as a suggested learning path (e.g. Outbox →
 Idempotency Keys → Exactly-Once Dedup).

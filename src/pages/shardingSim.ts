@@ -1,6 +1,9 @@
-export type Mode = 'range' | 'hash' | 'consistent' | 'vnode'
+// Part 3 of the sharding page: moving accounts between shards while deposits keep arriving.
+// Placement is settled in Part 1, so this simulation always uses virtual nodes.
+import { hashOf, ownerAt as ownerFor, ringPoints, shardsAt, type Shard } from './shardingPlacement'
+
+export type Protocol = 'flip' | 'copy' | 'catchup'
 export type Actor = 'router' | 'migrator'
-export type Shard = 'A' | 'B' | 'C'
 
 export type CodeLine = {
   id: string
@@ -8,101 +11,87 @@ export type CodeLine = {
   breakable: boolean
 }
 
-const BAL = 1000
-const fmtBal = (n: number) => `$${n.toLocaleString()}`
+const OPENING_BALANCE = 1000
+const LIVE_DEPOSIT = 250
+const STALE_DEPOSIT = 100
+export const fmtBal = (n: number) => `$${n.toLocaleString('en-US')}`
 
-// A fixed, deterministic "hash of the account id" table — stands in for a real hash function so
-// the numbers are reproducible and legible, while mod/ring math below is computed for real.
-const HASH: Record<number, number> = {
-  1: 733, 2: 104, 3: 988, 4: 452, 5: 317, 6: 841, 7: 29, 8: 566, 9: 690, 10: 178, 11: 905, 12: 340,
-}
+const SEEDED = [1, 2, 3, 4, 5, 6, 7, 8]
+const OPENED_LIVE = [9, 10]
+const TOTAL_AT_RESHARD = SEEDED.length + OPENED_LIVE.length
 
-const RING_POS: Record<Shard, number> = { A: 200, B: 600, C: 850 }
-const VNODE_POS: Record<Shard, number[]> = {
-  A: [150, 500, 870],
-  B: [350, 700, 950],
-  C: [250, 620, 920],
-}
+export const ownerAt = (id: number, version: number): Shard => ownerFor('vnode', id, version)
 
-function rangeAssign(id: number, shardCount: 2 | 3): Shard {
-  if (id <= 4) return 'A'
-  if (shardCount === 2) return 'B'
-  return id <= 7 ? 'B' : 'C'
-}
-function hashAssign(id: number, shards: Shard[]): Shard {
-  return shards[HASH[id] % shards.length]
-}
-function ringAssign(id: number, shards: Shard[]): Shard {
-  const pts = shards.map((s) => ({ s, pos: RING_POS[s] })).sort((a, b) => a.pos - b.pos)
-  const h = HASH[id]
-  return (pts.find((p) => p.pos >= h) ?? pts[0]).s
-}
-function vnodeAssign(id: number, shards: Shard[]): Shard {
-  const pts = shards.flatMap((s) => VNODE_POS[s].map((pos) => ({ s, pos }))).sort((a, b) => a.pos - b.pos)
-  const h = HASH[id]
-  return (pts.find((p) => p.pos >= h) ?? pts[0]).s
-}
-export function assign(mode: Mode, id: number, shards: Shard[]): Shard {
-  if (mode === 'range') return rangeAssign(id, shards.length as 2 | 3)
-  if (mode === 'hash') return hashAssign(id, shards)
-  if (mode === 'consistent') return ringAssign(id, shards)
-  return vnodeAssign(id, shards)
+const LOOKUP = '  val shard = map.ring.nextClockwise(hash(acctId))'
+
+export function routerCode(protocol: Protocol): CodeLine[] {
+  const fenced = protocol === 'catchup'
+  return [
+    { id: 'r1', code: 'fun deposit(acctId, amount) {', breakable: false },
+    { id: 'r2', code: LOOKUP, breakable: true },
+    fenced
+      ? { id: 'r3', code: '  val result = shards[shard].credit(map.version, acctId, amount)', breakable: true }
+      : { id: 'r3', code: '  shards[shard].credit(acctId, amount)   // upsert', breakable: true },
+    ...(fenced
+      ? [
+          { id: 'r4', code: '  if (result == STALE_MAP) {', breakable: false },
+          { id: 'r4b', code: '    map = fetchLatestMap()', breakable: false },
+          { id: 'r4c', code: '    return deposit(acctId, amount)', breakable: false },
+          { id: 'r4d', code: '  }', breakable: false },
+        ]
+      : []),
+    { id: 'r5', code: '}', breakable: false },
+    { id: 'q1', code: 'fun balance(acctId) {', breakable: false },
+    { id: 'q2', code: LOOKUP, breakable: true },
+    { id: 'q3', code: '  return shards[shard].get(acctId)', breakable: true },
+    { id: 'q4', code: '}', breakable: false },
+  ]
 }
 
-const PRE_RESHARD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-const LATE_GROWTH = [11, 12]
-
-export const ROUTER_CODE: Record<Mode, CodeLine[]> = {
-  range: [
-    { id: 'rt1', code: 'fun write(acctId, amount) {', breakable: false },
-    { id: 'rt2', code: '  val shard = rangeMap.lookup(acctId)   // which contiguous block owns this id?', breakable: true },
-    { id: 'rt3', code: '  shards[shard].insert(acctId, amount)', breakable: true },
-    { id: 'rt4', code: '}', breakable: false },
-  ],
-  hash: [
-    { id: 'rt1', code: 'fun write(acctId, amount) {', breakable: false },
-    { id: 'rt2', code: '  val shard = shardList[hash(acctId) % shardList.size]', breakable: true },
-    { id: 'rt3', code: '  shards[shard].insert(acctId, amount)', breakable: true },
-    { id: 'rt4', code: '}', breakable: false },
-  ],
-  consistent: [
-    { id: 'rt1', code: 'fun write(acctId, amount) {', breakable: false },
-    { id: 'rt2', code: '  val shard = ring.nextClockwise(hash(acctId))', breakable: true },
-    { id: 'rt3', code: '  shards[shard].insert(acctId, amount)', breakable: true },
-    { id: 'rt4', code: '}', breakable: false },
-  ],
-  vnode: [
-    { id: 'rt1', code: 'fun write(acctId, amount) {', breakable: false },
-    { id: 'rt2', code: '  val shard = ring.nextClockwise(hash(acctId))   // same ring lookup — just more points on it', breakable: true },
-    { id: 'rt3', code: '  shards[shard].insert(acctId, amount)', breakable: true },
-    { id: 'rt4', code: '}', breakable: false },
-  ],
+const M = {
+  open: { id: 'm1', code: 'fun reshard(newMap) {', breakable: false },
+  plan: { id: 'm_plan', code: '  val moves = savePlan(ownerChanges(map, newMap))', breakable: true },
+  cursor: { id: 'm_cur', code: '  val cursor = changelog.position()   // capture on', breakable: true },
+  loop: { id: 'm3', code: '  for (key in moves) {', breakable: false },
+  get: { id: 'm_get', code: '    val row = oldOwner(key).get(key)', breakable: true },
+  put: { id: 'm_put', code: '    newOwner(key).put(key, row)', breakable: true },
+  endLoop: { id: 'm6', code: '  }', breakable: false },
+  fence: { id: 'm_fen', code: '  fence(moves)   // old owners refuse writes', breakable: true },
+  replay: { id: 'm_rep', code: '  changelog.replay(cursor)   // copy missed these', breakable: true },
+  publish: { id: 'm_pub', code: '  routers.publish(newMap)   // the flip', breakable: true },
+  del: { id: 'm_del', code: '  for (key in moves) oldOwner(key).delete(key)', breakable: true },
+  close: { id: 'm9', code: '}', breakable: false },
 }
 
-export const MIGRATOR_CODE: CodeLine[] = [
-  { id: 'mg1', code: 'for (key in keysToMove) {', breakable: false },
-  { id: 'mg2', code: '  val row = shards[oldShard(key)].get(key)', breakable: true },
-  { id: 'mg3', code: '  shards[newShard(key)].put(key, row)', breakable: true },
-  { id: 'mg4', code: '  routingTable.update(key, newShard(key))', breakable: true },
-  { id: 'mg5', code: '  shards[oldShard(key)].delete(key)', breakable: true },
-  { id: 'mg6', code: '}', breakable: false },
-]
+export const MIGRATOR_CODE: Record<Protocol, CodeLine[]> = {
+  flip: [M.open, M.plan, M.publish, M.loop, M.get, M.put, M.endLoop, M.del, M.close],
+  copy: [M.open, M.plan, M.loop, M.get, M.put, M.endLoop, M.publish, M.del, M.close],
+  catchup: [M.open, M.plan, M.cursor, M.loop, M.get, M.put, M.endLoop, M.fence, M.replay, M.publish, M.del, M.close],
+}
 
 export function lineNo(lines: CodeLine[], id: string): number {
   return lines.findIndex((l) => l.id === id) + 1
 }
 
 type LogEntry = { actor: Actor | 'crash' | 'system'; text: string }
+export type Row = { id: number; bal: number }
+export type PlanEntry = { key: number; from: Shard; to: Shard; status: 'queued' | 'copied' | 'removed' }
+export type ChangeEntry = { pos: number; key: number; bal: number; applied: boolean }
 
 export type SimState = {
-  shards: Record<Shard, number[]>
-  activeShards: Shard[]
-  routing: Partial<Record<number, Shard>>
-  migrationQueue: { key: number; status: 'pending' | 'done' }[]
-  moveCount: number
-  totalPreReshard: number
-  preReshardSkew: number | null
-  lateGrowthShards: Shard[]
+  shards: Record<Shard, Row[]>
+  cJoined: boolean
+  mapVersion: 1 | 2
+  plan: PlanEntry[]
+  fenced: number[]
+  capturing: boolean
+  changelog: ChangeEntry[]
+  acked: Record<number, number>
+  worker: 'idle' | 'running' | 'down'
+  crashes: number
+  peakUnreadable: number
+  peakWrong: number
+  settled: boolean
   log: LogEntry[]
 }
 
@@ -116,111 +105,122 @@ export type Step = {
   crash: boolean
   locals: Record<string, string>
   tag: string
+  focus: number | null
 }
 
-function residency(s: SimState, id: number): Shard[] {
-  return (['A', 'B', 'C'] as Shard[]).filter((sh) => s.activeShards.includes(sh) && s.shards[sh].includes(id))
+export function unreadable(s: SimState): number[] {
+  return Object.keys(s.acked)
+    .map(Number)
+    .filter((id) => !s.shards[ownerAt(id, s.mapVersion)].some((r) => r.id === id))
+}
+
+export function wrongBalance(s: SimState): number[] {
+  return Object.keys(s.acked)
+    .map(Number)
+    .filter((id) => {
+      const row = s.shards[ownerAt(id, s.mapVersion)].find((r) => r.id === id)
+      return row !== undefined && row.bal !== s.acked[id]
+    })
+}
+
+function extraCopies(s: SimState): number[] {
+  const seen = new Map<number, number>()
+  for (const sh of ['A', 'B', 'C'] as Shard[]) for (const r of s.shards[sh]) seen.set(r.id, (seen.get(r.id) ?? 0) + 1)
+  return [...seen.entries()].filter(([, n]) => n > 1).map(([id]) => id)
 }
 
 export type CheckResult = [name: string, detail: string, status: 'ok' | 'bad' | 'wait']
 
-export function checks(s: SimState, final: boolean): CheckResult[] {
-  const routedIds = Object.keys(s.routing).map(Number)
-  const lostReads = routedIds.filter((id) => {
-    const sh = s.routing[id]
-    return !sh || !s.shards[sh].includes(id)
-  })
-  const dupIds = routedIds.filter((id) => residency(s, id).length > 1)
-  const migrationStarted = s.migrationQueue.length > 0
-  const migrationSettled = !migrationStarted || s.migrationQueue.every((m) => m.status === 'done') || final
-  const moveFrac = s.totalPreReshard ? s.moveCount / s.totalPreReshard : 0
-  const lateDone = s.lateGrowthShards.length >= LATE_GROWTH.length
-
+export function checks(s: SimState): CheckResult[] {
+  const nowGone = unreadable(s).length
+  const nowWrong = wrongBalance(s).length
   return [
-    ['No lost reads', "Every account's routing entry points at a shard that actually has its row", lostReads.length ? 'bad' : 'ok'],
     [
-      'No duplicate left behind',
-      'Once migration settles, an account exists on exactly one shard, not two',
-      !migrationStarted ? 'ok' : !migrationSettled ? 'wait' : dupIds.length ? 'bad' : 'ok',
+      'No lost reads',
+      `Every account has a row on the shard the published map names. Unreadable now: ${nowGone}, worst so far: ${s.peakUnreadable}`,
+      s.peakUnreadable > 0 ? 'bad' : 'ok',
     ],
     [
-      'Resharding stays proportional',
-      `Adding a shard should move a minority of existing keys (moved ${s.moveCount}/${s.totalPreReshard || PRE_RESHARD.length})`,
-      moveFrac > 0.5 ? 'bad' : 'ok',
+      'No acknowledged deposit lost',
+      `The owner's balance matches what clients were told. Wrong now: ${nowWrong}, worst so far: ${s.peakWrong}`,
+      s.peakWrong > 0 ? 'bad' : 'ok',
     ],
     [
-      'New growth stays spread out',
-      'Accounts created after the new shard joins should land on more than one shard',
-      !lateDone ? 'wait' : new Set(s.lateGrowthShards).size > 1 ? 'ok' : 'bad',
-    ],
-    [
-      'Shards start out evenly loaded',
-      'Before any resharding, no shard should hold meaningfully more than its fair share of the keys',
-      s.preReshardSkew === null ? 'wait' : s.preReshardSkew >= 1.3 ? 'bad' : 'ok',
+      'One copy once settled',
+      `After the migration finishes, each account lives on exactly one shard. Extra copies now: ${extraCopies(s).length}`,
+      !s.settled ? 'wait' : extraCopies(s).length ? 'bad' : 'ok',
     ],
   ]
 }
 
 export function verdictText(s: SimState): string {
-  const routedIds = Object.keys(s.routing).map(Number)
-  const lostReads = routedIds.filter((id) => {
-    const sh = s.routing[id]
-    return !sh || !s.shards[sh].includes(id)
-  })
-  const dupIds = routedIds.filter((id) => residency(s, id).length > 1)
-  const moveFrac = s.totalPreReshard ? Math.round((100 * s.moveCount) / s.totalPreReshard) : 0
-  const lateSpread = s.lateGrowthShards.length >= LATE_GROWTH.length ? new Set(s.lateGrowthShards).size > 1 : null
-
-  if (lostReads.length) {
-    return `Broken: ${lostReads.length} account(s) are routed to a shard that doesn't have their data. A read for those accounts comes back empty even though the money is sitting somewhere else.`
-  }
   const parts: string[] = []
-  if (dupIds.length) {
-    parts.push(`${dupIds.length} account(s) still exist on two shards at once — wasteful, but every read still resolves to the correct, current copy.`)
+  if (s.peakUnreadable > 0) {
+    parts.push(`Up to ${s.peakUnreadable} account(s) were unreadable while routers pointed at a shard that didn't have their rows yet.`)
   }
-  if (s.preReshardSkew !== null && s.preReshardSkew >= 1.3) {
-    const pct = Math.round((s.preReshardSkew - 1) * 100)
-    parts.push(`Even before resharding, the busiest shard held about ${pct}% more than its fair share of the keys.`)
+  const wrong = wrongBalance(s).length
+  if (wrong > 0) {
+    parts.push(`${wrong} account(s) permanently lost a deposit the client was told succeeded.`)
   }
-  if (s.totalPreReshard) {
-    parts.push(`Adding the new shard required moving ${s.moveCount} of ${s.totalPreReshard} existing accounts (${moveFrac}%).`)
+  const crashNote = s.crashes ? ' The crash cost time, not data: the process restarted and picked up where it left off.' : ''
+  if (!parts.length) {
+    return `Consistent: every account stayed readable and every acknowledged deposit survived the move.${crashNote}`
   }
-  if (lateSpread === false) {
-    parts.push('Growth after the resharding still piled entirely onto one shard — the fix didn\'t fix the actual problem, it just relocated it.')
-  } else if (lateSpread === true) {
-    parts.push('Growth after the resharding landed on more than one shard — no new hotspot formed.')
-  }
-  if (!parts.length) return 'Consistent: every account resolves to exactly one shard, with nothing left stranded.'
-  return parts.join(' ')
+  return `${parts.join(' ')}${crashNote}`
 }
 
-export function introText(mode: Mode): string {
-  return mode === 'range'
-    ? 'Range sharding: each shard owns a contiguous block of account IDs. Press Step, or click a gutter dot to decide exactly where a process dies.'
-    : mode === 'hash'
-      ? 'Hash sharding: shard = hash(acctId) % N. Fixes the hotspot — watch what happens the moment N changes.'
-      : mode === 'consistent'
-        ? "Consistent hashing: shards sit on a ring. A key belongs to whichever shard is next clockwise from its hash. Adding a shard should only steal keys from its neighbor."
-        : 'Consistent hashing with virtual nodes: the same ring, but each shard holds many points on it instead of one.'
+export function introText(protocol: Protocol): string {
+  const move: Record<Protocol, string> = {
+    flip: 'When shard C joins, routers switch to the new map first and the data follows.',
+    copy: 'When shard C joins, the data is copied first and routers switch afterwards.',
+    catchup: 'When shard C joins, the copy also captures concurrent writes, and old owners refuse writes before routers switch.',
+  }
+  return `Eight accounts are already live on shards A and B under map v1. ${move[protocol]} Press Step, or click a gutter dot to choose where a process dies.`
 }
 
-export const ACTOR_LABEL: Record<Actor, string> = { router: 'router', migrator: 'migration worker' }
+function routeExplain(id: number, shard: Shard, version: number): string {
+  const pts = ringPoints('vnode', shardsAt(version))
+  const h = hashOf(id)
+  const hit = pts.find((p) => p.pos >= h)
+  return hit
+    ? `hash(acct-${id}) = ${h}. The next point clockwise in map v${version} is ${hit.pos}, owned by shard ${shard}.`
+    : `hash(acct-${id}) = ${h}. Nothing lies past it, so the lookup wraps to the first point, ${pts[0].pos}, owned by shard ${shard}.`
+}
 
-export function build(mode: Mode, crashId: string | null): Step[] {
+const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o))
+
+function upsert(rows: Row[], id: number, bal: number) {
+  const row = rows.find((r) => r.id === id)
+  if (row) row.bal = bal
+  else rows.push({ id, bal })
+}
+
+export function build(protocol: Protocol, crashId: string | null): Step[] {
   const s: SimState = {
     shards: { A: [], B: [], C: [] },
-    activeShards: ['A', 'B'],
-    routing: {},
-    migrationQueue: [],
-    moveCount: 0,
-    totalPreReshard: PRE_RESHARD.length,
-    preReshardSkew: null,
-    lateGrowthShards: [],
+    cJoined: false,
+    mapVersion: 1,
+    plan: [],
+    fenced: [],
+    capturing: false,
+    changelog: [],
+    acked: {},
+    worker: 'idle',
+    crashes: 0,
+    peakUnreadable: 0,
+    peakWrong: 0,
+    settled: false,
     log: [],
   }
+  for (const id of SEEDED) {
+    s.shards[ownerAt(id, 1)].push({ id, bal: OPENING_BALANCE })
+    s.acked[id] = OPENING_BALANCE
+  }
+
   let locals: Record<string, string> = {}
+  let focus: number | null = null
   const steps: Step[] = [
-    { s: clone(s), line: null, actor: null, label: 'start', title: 'Ready', text: introText(mode), crash: false, locals: {}, tag: '' },
+    { s: clone(s), line: null, actor: null, label: 'start', title: 'Ready', text: introText(protocol), crash: false, locals: {}, tag: '', focus: null },
   ]
   let crashed = false
   const willCrash = (id: string) => {
@@ -229,6 +229,9 @@ export function build(mode: Mode, crashId: string | null): Step[] {
       return true
     }
     return false
+  }
+  const setLocal = (name: string, value: string) => {
+    locals = { ...locals, [name]: value }
   }
   const push = (
     line: string | null,
@@ -241,179 +244,425 @@ export function build(mode: Mode, crashId: string | null): Step[] {
     isCrash = false,
   ) => {
     if (fn) fn(s)
+    s.peakUnreadable = Math.max(s.peakUnreadable, unreadable(s).length)
+    s.peakWrong = Math.max(s.peakWrong, wrongBalance(s).length)
     s.log.push({ actor: isCrash ? 'crash' : actor, text: `[${actor}] ${title}` })
-    steps.push({ s: clone(s), line, actor, label, title, text, crash: isCrash, locals: { ...locals }, tag })
+    steps.push({ s: clone(s), line, actor, label, title, text, crash: isCrash, locals: { ...locals }, tag, focus })
   }
 
-  function createAccount(id: number, idx: number, total: number, phaseTag: string): boolean {
+  const routerCrash = (line: string, id: number, what: string, tag: string) => {
+    push(line, 'router', 'CRASH', `Router killed on acct-${id}`, what, tag, (st) => {
+      st.crashes++
+    }, true)
     locals = {}
-    if (willCrash('rt2')) {
-      push('rt2', 'router', 'CRASH', `Router killed before computing a shard for acct-${id}`, 'Nothing happened yet — no shard was chosen, nothing was written. A retry of this request is completely safe.', `${phaseTag} ${idx}/${total}`, undefined, true)
-      return true
+    push(null, 'system', 'retry', 'Client gets no answer and retries on another router', 'Same request, a fresh router process, new local variables.', tag)
+  }
+
+  type DepositOpts = {
+    stale?: boolean
+    explain: (shard: Shard) => string
+    title: (shard: Shard) => string
+  }
+  const deposit = (id: number, amount: number, tag: string, opts: DepositOpts) => {
+    focus = id
+    let version: number = opts.stale ? 1 : s.mapVersion
+    for (;;) {
+      locals = { acctId: `'acct-${id}'`, amount: fmtBal(amount), 'map.version': `v${version}` }
+      if (willCrash('r2')) {
+        routerCrash('r2', id, 'No shard was chosen and nothing was written, so retrying this request is safe.', tag)
+        continue
+      }
+      const shard = ownerAt(id, version)
+      setLocal('hash(acctId)', String(hashOf(id)))
+      setLocal('shard', `'${shard}'`)
+      push('r2', 'router', 'route', `Router picks shard ${shard} for acct-${id}`, routeExplain(id, shard, version), tag)
+      if (willCrash('r3')) {
+        routerCrash('r3', id, `Shard ${shard} was chosen, but the write never reached it, so retrying is safe. A crash after the shard applies the write is a different problem: the client can't tell whether it landed. That one needs an idempotency key, not a sharding fix.`, tag)
+        continue
+      }
+      const from = s.plan.find((p) => p.key === id)?.from
+      if (protocol === 'catchup' && s.fenced.includes(id) && shard === from) {
+        setLocal('result', 'STALE_MAP')
+        push('r3', 'router', 'refused', `Shard ${shard} refuses the write: STALE_MAP`, `acct-${id} is fenced on shard ${shard}, so the write is rejected before anything changes and no deposit is acknowledged. This refusal is the difference from "Copy, then flip", where this exact write was accepted and then lost.`, tag)
+        version = s.mapVersion
+        push('r4', 'router', 'check', 'Result is STALE_MAP: condition is true', 'The shard is saying this router has an out-of-date map, so the router needs a new one.', tag)
+        push('r4b', 'router', 'refresh', `Fetches the latest map: v${version}`, `This router now knows about shard C, and the next lookup will use map v${version}.`, tag, () => {
+          setLocal('map.version', `v${version}`)
+        })
+        push('r4c', 'router', 'retry', 'Retries the same deposit', "The refused write never applied, so sending it again can't double-credit.", tag)
+        continue
+      }
+      const existingBal = s.shards[shard].find((r) => r.id === id)?.bal ?? 0
+      const text = opts.explain(shard)
+      push('r3', 'router', 'credit', opts.title(shard), text, tag, (st) => {
+        const next = existingBal + amount
+        upsert(st.shards[shard], id, next)
+        st.acked[id] = (st.acked[id] ?? 0) + amount
+        if (st.capturing && from === shard) {
+          st.changelog.push({ pos: st.changelog.length + 1, key: id, bal: next, applied: false })
+        }
+        if (protocol === 'catchup') setLocal('result', 'OK')
+      })
+      if (protocol === 'catchup') {
+        push('r4', 'router', 'check', 'Result is OK: condition is false', 'The shard accepted this write, so there is nothing to refresh.', tag)
+      }
+      return
     }
-    const shard = assign(mode, id, s.activeShards)
-    locals = mode === 'range' ? { acctId: `'acct-${id}'`, shard: `'${shard}'` } : { acctId: `'acct-${id}'`, hash: String(HASH[id]), shard: `'${shard}'` }
-    push('rt2', 'router', 'route', `Router computes shard = ${shard} for acct-${id}`, routeExplain(mode, id, shard), `${phaseTag} ${idx}/${total}`)
-    if (willCrash('rt3')) {
-      push('rt3', 'router', 'CRASH', `Router killed before inserting acct-${id}`, "The shard was chosen but the row was never written anywhere. The account doesn't exist yet — this is a lost write, not a misrouted one.", `${phaseTag} ${idx}/${total}`, undefined, true)
-      return true
+  }
+
+  const readBalance = (id: number, tag: string, explain: (shard: Shard, bal: number | null) => string) => {
+    focus = id
+    for (;;) {
+      const version = s.mapVersion
+      locals = { acctId: `'acct-${id}'`, 'map.version': `v${version}` }
+      if (willCrash('q2')) {
+        routerCrash('q2', id, 'A read changes nothing, so losing one mid-flight is always safe to retry.', tag)
+        continue
+      }
+      const shard = ownerAt(id, version)
+      setLocal('hash(acctId)', String(hashOf(id)))
+      setLocal('shard', `'${shard}'`)
+      push('q2', 'router', 'route', `Reader picks shard ${shard} for acct-${id}`, routeExplain(id, shard, version), tag)
+      if (willCrash('q3')) {
+        routerCrash('q3', id, 'A read changes nothing, so losing one mid-flight is always safe to retry.', tag)
+        continue
+      }
+      const row = s.shards[shard].find((r) => r.id === id)
+      const bal = row ? row.bal : null
+      setLocal('returned', bal === null ? 'null' : fmtBal(bal))
+      push('q3', 'router', 'read', bal === null ? `Shard ${shard} returns nothing for acct-${id}` : `Shard ${shard} returns ${fmtBal(bal)} for acct-${id}`, explain(shard, bal), tag)
+      return
     }
-    push('rt3', 'router', 'insert', `Writes acct-${id} to shard ${shard}`, `${fmtBal(BAL)} lands in shard ${shard}'s table.`, `${phaseTag} ${idx}/${total}`, (st) => {
-      st.shards[shard].push(id)
-      st.routing[id] = shard
+  }
+
+  // ---- Phase 1: two more accounts open under map v1, through the real router path.
+  OPENED_LIVE.forEach((id, i) => {
+    deposit(id, OPENING_BALANCE, `opening ${i + 1}/${OPENED_LIVE.length}`, {
+      title: (shard) => `Opens acct-${id} on shard ${shard}`,
+      explain: (shard) => `credit is an upsert, so with no row there yet it creates one on shard ${shard} holding ${fmtBal(OPENING_BALANCE)}.`,
     })
-    return false
+  })
+
+  // ---- Phase 2: shard C exists, but no router knows about it yet.
+  focus = null
+  locals = {}
+  push(null, 'system', 'join', 'Shard C is provisioned', 'Growth forced a third shard. It is empty, and the published map is still v1, so no traffic reaches it yet. Moving data onto it is the next problem.', 'reshard', (st) => {
+    st.cJoined = true
+  })
+
+  const moves = Array.from({ length: TOTAL_AT_RESHARD }, (_, i) => i + 1).filter((id) => ownerAt(id, 1) !== ownerAt(id, 2))
+  const fromOf = (key: number) => ownerAt(key, 1)
+  const toOf = (key: number) => ownerAt(key, 2)
+  const movesStr = `[${moves.map((m) => `acct-${m}`).join(', ')}]`
+
+  let workerBase: Record<string, string> = { newMap: 'v2' }
+  let planSaved = false
+
+  const killWorker = (line: string, what: string, tag: string) => {
+    push(line, 'migrator', 'CRASH', 'Migration worker killed', what, tag, (st) => {
+      st.worker = 'down'
+      st.crashes++
+    }, true)
+    focus = null
+    const reload = planSaved
+      ? s.mapVersion === 2
+        ? 'It reloads the saved plan. That matters here: recomputing ownerChanges(map, newMap) now would return nothing, because the map already flipped, and whatever is left on the old owners would be stranded forever.'
+        : 'It reloads the saved plan and re-runs the unfinished work. Rewriting a row that was already copied is harmless, because put replaces the row with the same image.'
+      : 'No plan was saved before the crash, so it simply starts over from the top.'
+    locals = { ...workerBase }
+    push(null, 'system', 'restart', 'Worker restarts', `Its local variables died with it. ${reload}`, tag, (st) => {
+      st.worker = 'running'
+    })
   }
 
-  // Phase 1+2: create accounts 1-10 across shards A, B
-  for (let i = 0; i < PRE_RESHARD.length; i++) {
-    if (createAccount(PRE_RESHARD[i], i + 1, PRE_RESHARD.length, 'creating')) {
-      push(null, 'system', 'end', 'Run finished', verdictText(s), '', undefined)
-      return steps
-    }
+  // Live traffic is a different process from the worker. Its locals must not clobber the worker's.
+  const traffic = (fn: () => void) => {
+    const saved = locals
+    fn()
+    locals = saved
+    focus = null
   }
 
-  // snapshot the pre-reshard load skew
-  const preCounts = s.activeShards.map((sh) => s.shards[sh].length)
-  const preAvg = preCounts.reduce((a, b) => a + b, 0) / preCounts.length
-  s.preReshardSkew = preAvg > 0 ? Math.max(...preCounts) / preAvg : 0
-
-  // Phase 3: shard C joins, migration
-  const keysToMove = PRE_RESHARD.filter((id) => assign(mode, id, ['A', 'B']) !== assign(mode, id, ['A', 'B', 'C']))
-  s.moveCount = keysToMove.length
-  s.migrationQueue = keysToMove.map((key) => ({ key, status: 'pending' as const }))
-  const moveFrac = Math.round((100 * keysToMove.length) / PRE_RESHARD.length)
+  locals = { ...workerBase }
+  if (willCrash('m_plan')) {
+    killWorker('m_plan', 'Nothing has moved and the map is still v1, so the system behaves exactly as it did before shard C existed.', 'reshard')
+  }
+  workerBase = { ...workerBase, moves: movesStr }
+  planSaved = true
   push(
-    null,
-    'system',
-    'join',
-    'Shard C joins the cluster',
-    keysToMove.length
-      ? `Growth forced the operator to add a shard. Under this routing scheme, ${keysToMove.length} of ${PRE_RESHARD.length} existing accounts (${moveFrac}%) now belong on a different shard than the one they're sitting on.`
-      : 'Growth forced the operator to add a shard. Under this routing scheme, every existing account already belongs where it already is — nothing needs to move.',
-    '',
+    'm_plan',
+    'migrator',
+    'plan',
+    `Plan: ${moves.length} of ${TOTAL_AT_RESHARD} accounts change owner`,
+    'This is the number Part 1 was about: the placement decides how many accounts must move. The plan is saved durably, so a restart can resume it. Moving them safely is the rest of this run.',
+    'reshard',
     (st) => {
-      st.activeShards = ['A', 'B', 'C']
+      st.worker = 'running'
+      st.plan = moves.map((key) => ({ key, from: fromOf(key), to: toOf(key), status: 'queued' as const }))
+      locals = { ...workerBase }
     },
   )
 
-  for (const key of keysToMove) {
+  const publish = () => {
+    if (willCrash('m_pub')) {
+      const what =
+        protocol === 'flip'
+          ? 'The map is still v1 and every row is still on its old owner, so nothing is broken yet.'
+          : protocol === 'copy'
+            ? 'The map is still v1, so reads stay correct, but the crash widens the window: every deposit accepted while the worker is down lands only on old owners.'
+            : 'The keys are fenced but the map has not flipped, so writes to them are refused until the worker returns. The data is safe, but those accounts cannot take deposits, which is why real fences carry a lease.'
+      killWorker('m_pub', what, 'flip')
+    }
+    push(
+      'm_pub',
+      'migrator',
+      'flip',
+      'Routers switch to map v2',
+      protocol === 'flip'
+        ? `From this instant routers send ${moves.length} accounts to shards that don't have their rows yet. Nothing has been copied. Watch "No lost reads".`
+        : protocol === 'copy'
+          ? 'Readers now go to the new owners, which hold whatever the copy saw. Any deposit that landed on an old owner after its key was copied is now invisible. Watch "No acknowledged deposit lost".'
+          : 'Readers now go to the new owners, which hold the copy plus every captured write. Routers that have not heard yet are stopped by the fence.',
+      'flip',
+      (st) => {
+        st.mapVersion = 2
+      },
+    )
+  }
+
+  const copyLoop = (afterCopy: (i: number) => void) => {
+    moves.forEach((key, i) => {
+      const tag = `copy ${i + 1}/${moves.length}`
+      const from = fromOf(key)
+      const to = toOf(key)
+      for (;;) {
+        focus = key
+        locals = { ...workerBase, key: `acct-${key}`, 'oldOwner(key)': `'${from}'`, 'newOwner(key)': `'${to}'` }
+        if (willCrash('m_get')) {
+          killWorker('m_get', `acct-${key} hasn't been read yet. Its row is untouched on shard ${from}.`, tag)
+          continue
+        }
+        const bal = s.shards[from].find((r) => r.id === key)?.bal ?? 0
+        setLocal('row', `{ id: ${key}, bal: ${fmtBal(bal)} }`)
+        push('m_get', 'migrator', 'read', `Reads acct-${key} from shard ${from}`, "This is a snapshot of the row at this instant. Any later deposit won't be in it.", tag)
+        if (willCrash('m_put')) {
+          killWorker(
+            'm_put',
+            s.shards[to].some((r) => r.id === key)
+              ? `The read only lived in memory, so the snapshot is gone. Shard ${to} still holds the row the earlier upsert created, and the restart will read the old owner again.`
+              : `The read only lived in memory, so the snapshot is gone. Shard ${to} has nothing for acct-${key}, and the restart will read it again.`,
+            tag,
+          )
+          continue
+        }
+        const existing = s.shards[to].find((r) => r.id === key)
+        push(
+          'm_put',
+          'migrator',
+          'copy',
+          existing ? `Overwrites acct-${key} on shard ${to}` : `Copies acct-${key} to shard ${to}`,
+          existing
+            ? `Shard ${to} already had a row for this account, holding ${fmtBal(existing.bal)} from a deposit that arrived before the copy. put replaces it with the snapshot of ${fmtBal(bal)}, and that deposit is gone.`
+            : `acct-${key} now exists on both shards. Which copy is live depends only on the published map, currently v${s.mapVersion}.`,
+          tag,
+          (st) => {
+            upsert(st.shards[to], key, bal)
+            const p = st.plan.find((e) => e.key === key)
+            if (p) p.status = 'copied'
+          },
+        )
+        break
+      }
+      afterCopy(i)
+    })
+    focus = null
+    locals = { ...workerBase }
+  }
+
+  const liveKey = moves[0]
+  const staleKey = moves[1]
+  const readKey = moves[moves.length - 1]
+
+  const staleDeposit = (tag: string) => {
+    traffic(() => {
+      deposit(staleKey, STALE_DEPOSIT, tag, {
+        stale: true,
+        title: (shard) =>
+          protocol === 'catchup' ? `Router, now on map v2, credits ${fmtBal(STALE_DEPOSIT)} on shard ${shard}` : `Stale router credits ${fmtBal(STALE_DEPOSIT)} on shard ${shard}`,
+        explain: (shard) =>
+          protocol === 'catchup'
+            ? `The retry goes to the live owner, shard ${shard}. The deposit lands exactly once, in the row everyone reads.`
+            : `This router hasn't received map v2, because a publish never reaches every process at the same instant. Shard ${shard} has no reason to refuse, so it accepts and the client gets a success. But shard ${shard}'s row is no longer the one anybody reads.`,
+      })
+    })
+  }
+
+  const deleteLoop = () => {
+    moves.forEach((key, i) => {
+      const tag = `delete ${i + 1}/${moves.length}`
+      const from = fromOf(key)
+      const to = toOf(key)
+      focus = key
+      locals = { ...workerBase, key: `acct-${key}`, 'oldOwner(key)': `'${from}'` }
+      if (willCrash('m_del')) {
+        killWorker('m_del', `Routers already use map v2, so reads are unaffected. Shard ${from} just keeps an old copy until the restart finishes the cleanup.`, tag)
+        focus = key
+        locals = { ...workerBase, key: `acct-${key}`, 'oldOwner(key)': `'${from}'` }
+      }
+      const oldBal = s.shards[from].find((r) => r.id === key)?.bal
+      const newBal = s.shards[to].find((r) => r.id === key)?.bal
+      const diverged = oldBal !== undefined && newBal !== undefined && oldBal !== newBal
+      push(
+        'm_del',
+        'migrator',
+        'delete',
+        `Deletes acct-${key} from shard ${from}`,
+        diverged
+          ? `The old copy held ${fmtBal(oldBal)} but the live copy holds ${fmtBal(newBal)}. This delete destroys the only record of that difference, so the loss can no longer be repaired from the shards.`
+          : 'The old copy matched the live one, so this only reclaims space.',
+        tag,
+        (st) => {
+          st.shards[from] = st.shards[from].filter((r) => r.id !== key)
+          const p = st.plan.find((e) => e.key === key)
+          if (p) p.status = 'removed'
+          if (i === moves.length - 1) {
+            st.settled = true
+            st.worker = 'idle'
+          }
+        },
+      )
+    })
+    focus = null
     locals = {}
-    const oldShard = assign(mode, key, ['A', 'B'])
-    const newShard = assign(mode, key, ['A', 'B', 'C'])
-    const idxInQueue = s.migrationQueue.findIndex((m) => m.key === key)
-    const tag = `migration key ${idxInQueue + 1}/${keysToMove.length}`
-
-    if (willCrash('mg2')) {
-      push('mg2', 'migrator', 'CRASH', `Migration worker killed before reading acct-${key}`, `Nothing touched for acct-${key} yet. It's still sitting on shard ${oldShard}, routing still points there — safe to retry this key later.`, tag, undefined, true)
-      break
-    }
-    const row = s.shards[oldShard].includes(key) ? BAL : 0
-    locals = { key: `${key}`, oldShard: `'${oldShard}'`, newShard: `'${newShard}'` }
-    push('mg2', 'migrator', 'read', `Reads acct-${key} off shard ${oldShard}`, `Row fetched: { id: ${key}, bal: ${fmtBal(row)} }. Shard ${oldShard} is still the only copy and still authoritative.`, tag, () => {
-      locals = { ...locals, row: `{ id: ${key}, bal: ${fmtBal(row)} }` }
-    })
-
-    if (willCrash('mg3')) {
-      push('mg3', 'migrator', 'CRASH', `Migration worker killed before writing acct-${key} to shard ${newShard}`, `The read happened but nothing was written to ${newShard}. Routing still points at ${oldShard}, which still has the only copy — no duplicate, no loss.`, tag, undefined, true)
-      break
-    }
-    push('mg3', 'migrator', 'copy', `Copies acct-${key} onto shard ${newShard}`, `Shard ${newShard} now also has a copy. Routing hasn't flipped yet, so readers still go to ${oldShard} — which is still correct, since ${oldShard}'s copy hasn't been touched.`, tag, (st) => {
-      st.shards[newShard].push(key)
-    })
-
-    if (willCrash('mg4')) {
-      push('mg4', 'migrator', 'CRASH', `Migration worker killed before flipping routing for acct-${key}`, `Both shards now hold acct-${key}, but routing still points at ${oldShard} — which still has its copy. Reads are still correct; this just needs to finish on retry.`, tag, undefined, true)
-      break
-    }
-    push('mg4', 'migrator', 'flip', `Flips routing for acct-${key} to shard ${newShard}`, `From this instant, readers are sent to ${newShard} — which already has the data, because the copy above ran first. ${oldShard}'s copy is now stale but still present.`, tag, (st) => {
-      st.routing[key] = newShard
-    })
-
-    if (willCrash('mg5')) {
-      push('mg5', 'migrator', 'CRASH', `Migration worker killed before deleting acct-${key} from shard ${oldShard}`, `Routing already points at ${newShard}, and every read resolves correctly there. Shard ${oldShard} just keeps a harmless, stale duplicate until cleanup finishes.`, tag, undefined, true)
-      break
-    }
-    push('mg5', 'migrator', 'delete', `Deletes acct-${key} from shard ${oldShard}`, `The stale copy is reclaimed. Acct-${key} now exists on exactly one shard again: ${newShard}.`, tag, (st) => {
-      st.shards[oldShard] = st.shards[oldShard].filter((id) => id !== key)
-      const q = st.migrationQueue.find((m) => m.key === key)
-      if (q) q.status = 'done'
-    })
   }
 
-  if (crashed) {
-    push(null, 'system', 'end', 'Run finished', verdictText(s), '', undefined)
-    return steps
-  }
-
-  // Phase 4: late growth, after C exists
-  for (let i = 0; i < LATE_GROWTH.length; i++) {
-    const id = LATE_GROWTH[i]
-    const crashedNow = createAccount(id, i + 1, LATE_GROWTH.length, 'new growth')
-    if (!crashedNow) {
-      const sh = s.routing[id]
-      if (sh) s.lateGrowthShards = [...s.lateGrowthShards, sh]
+  // ---- Phase 3: the move itself. Same traffic in every protocol; what differs is what it runs into.
+  if (protocol === 'flip') {
+    publish()
+    traffic(() => {
+      readBalance(readKey, 'live read', (shard) =>
+        `The map says shard ${shard}, but the row is still on shard ${fromOf(readKey)} because the copy hasn't started. The customer's account appears to be gone.`,
+      )
+    })
+    traffic(() => {
+      deposit(liveKey, LIVE_DEPOSIT, 'live write', {
+        title: (shard) => `Credits ${fmtBal(LIVE_DEPOSIT)} on shard ${shard}`,
+        explain: (shard) =>
+          `Shard ${shard} has no row yet, so the upsert creates one holding only ${fmtBal(LIVE_DEPOSIT)}, and the client is told it succeeded. Their real ${fmtBal(OPENING_BALANCE)} is still on shard ${fromOf(liveKey)}, and the balance customers now see is wrong.`,
+      })
+    })
+    copyLoop((i) => {
+      if (i === 1) staleDeposit('stale router')
+    })
+  } else {
+    if (protocol === 'catchup') {
+      if (willCrash('m_cur')) {
+        killWorker('m_cur', 'No cursor was taken and no copying has started. Nothing depends on this run yet.', 'reshard')
+      }
+      workerBase = { ...workerBase, cursor: 'pos 0' }
+      push('m_cur', 'migrator', 'cursor', 'Marks the changelog position', 'This has to happen before the first row is read. A write after this point is captured even if the copy already passed its row. The cursor is saved with the plan, so a restart keeps it.', 'reshard', (st) => {
+        st.capturing = true
+        locals = { ...workerBase }
+      })
     }
-    if (crashedNow) break
+    copyLoop((i) => {
+      if (i !== 0) return
+      traffic(() => {
+        readBalance(readKey, 'live read', (shard, bal) =>
+          `Map v1 still says shard ${shard}, which still has the row, so this returns the correct ${fmtBal(bal ?? 0)}. Reads are fine during the copy.`,
+        )
+      })
+      traffic(() => {
+        deposit(liveKey, LIVE_DEPOSIT, 'live write', {
+          title: (shard) => `Credits ${fmtBal(LIVE_DEPOSIT)} on shard ${shard}`,
+          explain: (shard) =>
+            protocol === 'copy'
+              ? `Shard ${shard} is still the owner, so this is accepted and correct for now. But the copy already passed acct-${liveKey}, so shard ${toOf(liveKey)} still says ${fmtBal(OPENING_BALANCE)}, and nothing here will carry the deposit across.`
+              : `Shard ${shard} is still the owner, so this is accepted. The copy already passed acct-${liveKey}, but the write is after the cursor, so the changelog records it.`,
+        })
+      })
+    })
+    if (protocol === 'catchup') {
+      if (willCrash('m_fen')) {
+        killWorker('m_fen', 'Writes are still flowing to the old owners and the changelog is still capturing them. Nothing is lost.', 'cutover')
+      }
+      push('m_fen', 'migrator', 'fence', `Fences ${moves.length} keys on their old owners`, 'Old owners now refuse writes to these keys, so the changelog can stop growing and the replay can finish. This is the price: those accounts cannot take deposits until the flip. Real tools replay in a loop first, then fence only once the backlog is tiny, which keeps the pause to milliseconds.', 'cutover', (st) => {
+        st.fenced = [...moves]
+      })
+      if (willCrash('m_rep')) {
+        killWorker('m_rep', 'The keys are fenced and the replay did not run, so deposits to them are refused until the restart. No data is at risk, because the changelog and cursor are durable.', 'cutover')
+      }
+      const pendingCount = s.changelog.filter((c) => !c.applied).length
+      push(
+        'm_rep',
+        'migrator',
+        'replay',
+        pendingCount ? `Replays ${pendingCount} captured write(s) onto the new owners` : 'Replays the changelog: nothing was captured',
+        pendingCount
+          ? "Each entry is a full row image, not a delta, so replaying one twice after a crash can't double-credit. The new owner now has the deposit the copy missed."
+          : 'No write landed during the copy, so the new owners already match.',
+        'cutover',
+        (st) => {
+          for (const entry of st.changelog) {
+            if (entry.applied) continue
+            const p = st.plan.find((e) => e.key === entry.key)
+            if (p) upsert(st.shards[p.to], entry.key, entry.bal)
+            entry.applied = true
+          }
+        },
+      )
+    }
+    publish()
+    staleDeposit('stale router')
   }
 
-  push(null, 'system', 'end', 'Run finished', verdictText(s), '', undefined)
+  deleteLoop()
+
+  // ---- Phase 4: the customer who made a deposit mid-move checks their balance.
+  const expected = OPENING_BALANCE + LIVE_DEPOSIT
+  readBalance(liveKey, 'audit read', (shard, bal) =>
+    bal === expected
+      ? `The client was told their ${fmtBal(LIVE_DEPOSIT)} deposit succeeded, and shard ${shard} shows the expected ${fmtBal(expected)}.`
+      : `The client was told their ${fmtBal(LIVE_DEPOSIT)} deposit succeeded, so the balance should be ${fmtBal(expected)}. Shard ${shard} says ${fmtBal(bal ?? 0)}. In a ledger, that is an incident.`,
+  )
+
+  focus = null
+  locals = {}
+  push(null, 'system', 'end', 'Run finished', verdictText(s), '')
   return steps
 }
 
-function routeExplain(mode: Mode, id: number, shard: Shard): string {
-  if (mode === 'range') return `acct-${id} falls inside the block of IDs shard ${shard} owns.`
-  if (mode === 'hash') return `hash(acct-${id}) = ${HASH[id]}; ${HASH[id]} mod the current shard count points at ${shard}.`
-  if (mode === 'consistent') return `hash(acct-${id}) = ${HASH[id]}; walking clockwise from there, the first shard on the ring is ${shard}.`
-  return `hash(acct-${id}) = ${HASH[id]}; walking clockwise from there, the first point on the ring belongs to ${shard}.`
-}
-
-const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o))
-
-export const DEFAULT_CRASH: Record<Mode, string> = {
-  range: 'mg5',
-  hash: 'mg5',
-  consistent: 'mg5',
-  vnode: 'mg5',
-}
-
-export type Experiment = { label: string; title: string; mode: Mode; crash: string | null }
+export type Experiment = { label: string; title: string; protocol: Protocol; crash: string | null }
 
 export const EXPERIMENTS: Experiment[] = [
   {
-    label: 'Sequential growth piles onto one shard',
-    title: 'Range mode, full run. New accounts keep incrementing, so every one of them lands on whichever range is still open-ended — and splitting that range just relocates the hotspot, it doesn\'t remove it.',
-    mode: 'range',
+    label: 'Flip first: accounts vanish',
+    title: 'Routers switch before the data exists there, so reads return nothing and an upsert creates a wrong balance.',
+    protocol: 'flip',
     crash: null,
   },
   {
-    label: 'Resharding storm',
-    title: 'Hash mode, full run. Going from 2 shards to 3 changes hash(id) % N for most keys — watch 70% of existing accounts get flagged to move for a change that only added 50% more capacity.',
-    mode: 'hash',
+    label: 'Copy, then flip: silent loss',
+    title: 'The textbook order. Reads never break, and every step looks fine, yet two acknowledged deposits disappear. No crash required.',
+    protocol: 'copy',
     crash: null,
   },
   {
-    label: 'A ring can still be lumpy',
-    title: 'Consistent hashing, full run. Resharding only moves a minority of keys — but with just a couple of real nodes on the ring, the arcs between them aren\'t equal, so load was uneven from the start.',
-    mode: 'consistent',
+    label: 'The full answer',
+    title: 'The same deposits arrive at the same moments. One is captured and replayed, the other is refused and retried, and both survive.',
+    protocol: 'catchup',
     crash: null,
   },
   {
-    label: 'Virtual nodes: the actual best answer',
-    title: 'Consistent hashing + virtual nodes, full run. Same minimal resharding cost as plain consistent hashing, but each shard holds many scattered points, so the load is balanced even with few physical shards.',
-    mode: 'vnode',
-    crash: null,
+    label: 'Die while fenced',
+    title: 'The worker is killed at the worst moment: keys fenced, nothing flipped. Deposits to those keys pause during the outage, and nothing is lost after the restart.',
+    protocol: 'catchup',
+    crash: 'm_rep',
   },
   {
-    label: 'Crash before the copy finishes',
-    title: 'Range mode, migration worker dies right after reading the old row but before writing it to the new shard. Nothing moved — the key is still exactly where it was, no duplicate, safe to retry later.',
-    mode: 'range',
-    crash: 'mg3',
-  },
-  {
-    label: 'Crash after the copy, before cleanup',
-    title: 'Range mode, migration worker dies after routing already points at the new shard but before the old copy is deleted. Every read is still correct — the only cost is a stale, harmless duplicate sitting on the old shard.',
-    mode: 'range',
-    crash: 'mg5',
+    label: 'Die during cleanup',
+    title: 'The map already flipped, so recomputing the plan would find nothing to do. The saved plan is what lets the restart finish the deletes.',
+    protocol: 'catchup',
+    crash: 'm_del',
   },
 ]
