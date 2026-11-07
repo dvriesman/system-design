@@ -1239,19 +1239,28 @@
 }
 
 /* What the last step changed. */
-@keyframes sim-flash {
+/* Panels only flash an outline: a panel with a see-through background would show the code behind it. */
+@keyframes sim-flash-row {
   from {
     background-color: var(--accent-soft);
-    box-shadow: inset 0 0 0 1px var(--accent);
   }
   to {
     background-color: transparent;
-    box-shadow: inset 0 0 0 1px transparent;
   }
 }
-.sim-changed,
+@keyframes sim-flash-panel {
+  from {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  to {
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+}
+.sim-changed {
+  animation: sim-flash-panel 1.4s ease-out;
+}
 .sim-changed-row td {
-  animation: sim-flash 1.4s ease-out;
+  animation: sim-flash-row 1.4s ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .sim-changed,
@@ -1259,3 +1268,170 @@
     animation: none;
   }
 }
+
+/* Calculators and mock interview questions on case study pages. */
+.sim-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px 20px;
+  margin-block: 10px;
+}
+.sim-slider {
+  display: grid;
+  gap: 4px;
+  font-size: 0.86rem;
+}
+.sim-slider b {
+  font-family: var(--f-mono);
+}
+.sim-slider input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.sim-q {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.sim-q .sim-btn {
+  margin-top: 2px;
+}
+
+/* The architecture diagram that follows the requirements. */
+.sim-diagram {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+}
+.sim-diagram svg {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+.pl-edge polyline {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+}
+.pl-edge.async polyline {
+  stroke-dasharray: 6 4;
+}
+.pl-arrowhead {
+  fill: var(--muted);
+}
+.pl-edge-label {
+  fill: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+}
+.pl-node {
+  cursor: pointer;
+  outline: none;
+}
+.pl-node rect {
+  fill: var(--surface);
+  stroke: var(--svc);
+  stroke-width: 1.5;
+}
+.pl-node.data rect {
+  fill: var(--accent-soft);
+  stroke: var(--relay);
+}
+.pl-node.external rect {
+  stroke: var(--muted);
+  stroke-dasharray: 5 3;
+}
+.pl-node:hover rect,
+.pl-node:focus-visible rect {
+  stroke-width: 2.5;
+}
+.pl-node.selected rect {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.pl-node.fresh rect {
+  stroke: var(--ok);
+  stroke-width: 3;
+}
+.pl-title {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pl-sub {
+  fill: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+}
+.pl-legend {
+  flex-wrap: wrap;
+}
+.pl-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sim-tx-legend .pl-key::before {
+  display: none;
+}
+.pl-key.solid::after,
+.pl-key.dashed::after {
+  content: '';
+  width: 24px;
+  border-top: 2px solid var(--muted);
+  order: -1;
+}
+.pl-key.dashed::after {
+  border-top-style: dashed;
+}
+.pl-key.fresh {
+  color: var(--ok);
+}
+.sim ol.sim-draw {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+}
+.sim-draw button {
+  all: unset;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+.sim-draw button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* A wrapping list of topics, for when a segmented control would be too wide. */
+.sim-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sim-topics button {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.84rem;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.sim-topics button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.sim-topics button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+

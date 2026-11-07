@@ -58,4 +58,15 @@ export const patternGroups: PatternGroup[] = [
       },
     ],
   },
+  {
+    slug: 'case-studies',
+    title: 'Case Studies',
+    patterns: [
+      {
+        slug: 'pay-later-checkout',
+        title: 'Pay-Later Checkout',
+        summary: 'Design a pay-later network end to end: the business, the failures, the security and the trade-offs.',
+      },
+    ],
+  },
 ]

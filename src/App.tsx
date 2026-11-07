@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import IdempotencyPattern from './pages/IdempotencyPattern'
 import OAuthPattern from './pages/OAuthPattern'
 import OutboxPattern from './pages/OutboxPattern'
+import PayLaterPattern from './pages/PayLaterPattern'
 import SessionsPattern from './pages/SessionsPattern'
 import ShardingPattern from './pages/ShardingPattern'
 import StepUpPattern from './pages/StepUpPattern'
@@ -21,6 +22,7 @@ function App() {
         <Route path="/patterns/security/sessions-vs-jwts" element={<SessionsPattern />} />
         <Route path="/patterns/security/oauth-pkce" element={<OAuthPattern />} />
         <Route path="/patterns/security/step-up-authentication" element={<StepUpPattern />} />
+        <Route path="/patterns/case-studies/pay-later-checkout" element={<PayLaterPattern />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

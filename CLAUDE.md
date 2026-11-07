@@ -214,6 +214,13 @@ Authorization (what are you allowed to do?):
 - [ ] Delegated Access (scopes, token exchange, acting on behalf of a user)
 - [ ] Maker-Checker Approvals (four-eyes principle)
 
+Third content group: **Case Studies**, which design one realistic system end to end and link out to the pattern pages. A case
+study page starts from the business, then covers requirements and scale, architecture, deep dives, a debugger for the critical
+flow, a security review and a mock interview. Scenarios stay generic: never name or describe a real company, and keep anything
+about a specific interview in a private note outside the repo.
+
+- [x] Pay-Later Checkout
+
 Each pattern links to 2-3 related patterns so the sidebar order doubles as a suggested learning path (e.g. Outbox →
 Idempotency Keys → Exactly-Once Dedup).
 
