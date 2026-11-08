@@ -640,6 +640,9 @@
   gap: 10px 18px;
   margin: 0;
 }
+.sim dl.gl > div {
+  display: contents;
+}
 .sim dl.gl dt {
   font-family: var(--f-mono);
   font-size: 0.85rem;
@@ -1269,7 +1272,7 @@
   }
 }
 
-/* Calculators and mock interview questions on case study pages. */
+/* Sliders, used on case study pages. */
 .sim-sliders {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1288,16 +1291,8 @@
   width: 100%;
   accent-color: var(--accent);
 }
-.sim-q {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-}
-.sim-q .sim-btn {
-  margin-top: 2px;
-}
 
-/* The architecture diagram that follows the requirements. */
+/* Case study pages: a whiteboard diagram that redraws from the requirements. */
 .sim-diagram {
   overflow-x: auto;
   background: var(--surface);
@@ -1308,130 +1303,215 @@
 .sim-diagram svg {
   display: block;
   width: 100%;
-  min-width: 760px;
+  min-width: 900px;
   height: auto;
 }
-.pl-edge polyline {
-  fill: none;
-  stroke: var(--muted);
-  stroke-width: 1.4;
-}
-.pl-edge.async polyline {
-  stroke-dasharray: 6 4;
-}
-.pl-arrowhead {
-  fill: var(--muted);
-}
-.pl-edge-label {
-  fill: var(--muted);
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  paint-order: stroke;
-  stroke: var(--surface);
-  stroke-width: 4px;
-}
-.pl-node {
+.cs-node {
   cursor: pointer;
   outline: none;
 }
-.pl-node rect {
+.cs-node > rect,
+.cs-node > polygon,
+.cs-node > path {
   fill: var(--surface);
   stroke: var(--svc);
-  stroke-width: 1.5;
+  stroke-width: 1.6;
 }
-.pl-node.data rect {
+.cs-node.client > rect,
+.cs-node.client > line {
+  stroke: var(--cons);
+}
+.cs-node.client > line {
+  stroke-width: 1.2;
+}
+.cs-node .cs-dot {
+  fill: var(--cons);
+}
+.cs-node.edge > polygon,
+.cs-node.edge > rect {
+  stroke: var(--router);
+}
+.cs-node.db > path,
+.cs-node.search > path,
+.cs-node.warehouse > path,
+.cs-node.storage > path {
   fill: var(--accent-soft);
   stroke: var(--relay);
 }
-.pl-node.external rect {
+.cs-node.cache > path {
+  fill: var(--surface);
+  stroke: var(--relay);
+  stroke-dasharray: 5 3;
+}
+.cs-node .cs-rim {
+  fill: none;
+}
+.cs-node.queue > rect,
+.cs-node.stream > rect {
+  stroke: var(--migrator);
+}
+.cs-node .cs-slot {
+  stroke: var(--migrator);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+.cs-node.security > rect {
+  stroke: var(--bad);
+}
+.cs-node.security .cs-inner {
+  fill: none;
+  stroke-width: 1;
+}
+.cs-node .cs-external {
   stroke: var(--muted);
   stroke-dasharray: 5 3;
 }
-.pl-node:hover rect,
-.pl-node:focus-visible rect {
-  stroke-width: 2.5;
+.cs-node:hover > *:first-child,
+.cs-node:focus-visible > *:first-child {
+  stroke-width: 2.6;
 }
-.pl-node.selected rect {
+.cs-node.selected > *:first-child {
   stroke: var(--accent);
   stroke-width: 3;
 }
-.pl-node.fresh rect {
+.cs-node.fresh > *:first-child {
   stroke: var(--ok);
   stroke-width: 3;
 }
-.pl-title {
+.cs-title {
   fill: var(--ink);
   font-size: 13px;
   font-weight: 600;
 }
-.pl-sub {
+.cs-sub {
   fill: var(--muted);
   font-family: var(--f-mono);
   font-size: 10.5px;
 }
-.pl-legend {
-  flex-wrap: wrap;
+.cs-edge polyline {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
 }
-.pl-key {
+.cs-edge.async polyline {
+  stroke-dasharray: 6 4;
+}
+.cs-edge.dim,
+.cs-node.dim {
+  opacity: 0.18;
+}
+.cs-edge.lit polyline {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.cs-inspect ul {
+  margin: 4px 0 0;
+}
+.cs-arrowhead {
+  fill: var(--muted);
+}
+.cs-edge-label {
+  fill: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+}
+.cs-zone rect {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+  stroke-dasharray: 8 5;
+}
+.cs-zone.marked rect {
+  stroke: var(--bad);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+}
+.cs-zone text {
+  fill: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+}
+.cs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.cs-legend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.sim-tx-legend .pl-key::before {
-  display: none;
+.cs-legend svg {
+  width: 44px;
+  height: 21px;
+  overflow: visible;
 }
-.pl-key.solid::after,
-.pl-key.dashed::after {
-  content: '';
-  width: 24px;
-  border-top: 2px solid var(--muted);
-  order: -1;
+.cs-legend .cs-edge polyline {
+  stroke-width: 2;
 }
-.pl-key.dashed::after {
-  border-top-style: dashed;
+.cs-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px;
 }
-.pl-key.fresh {
+@media (max-width: 900px) {
+  .cs-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cs-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.cs-check input {
+  accent-color: var(--accent);
+}
+.cs-check.disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.cs-story {
+  margin: 0;
+}
+.cs-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.cs-metrics > div {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 2px;
+}
+.cs-metrics span {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cs-metrics b {
+  font-family: var(--f-mono);
+  font-size: 0.95rem;
+}
+.cs-metrics .ok b {
   color: var(--ok);
 }
-.sim ol.sim-draw {
-  list-style: decimal;
+.cs-metrics .bad b {
+  color: var(--bad);
+}
+.cs-inspect p {
   margin: 0;
-  padding-left: 22px;
-  display: grid;
-  gap: 6px;
-}
-.sim-draw button {
-  all: unset;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--accent);
-}
-.sim-draw button:focus-visible {
-  outline: 2px solid var(--accent);
-}
-
-/* A wrapping list of topics, for when a segmented control would be too wide. */
-.sim-topics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.sim-topics button {
-  all: unset;
-  cursor: pointer;
-  font-size: 0.84rem;
-  padding: 5px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink);
-}
-.sim-topics button:focus-visible {
-  outline: 2px solid var(--accent);
-}
-.sim-topics button[aria-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--surface);
 }
 

@@ -166,6 +166,37 @@ labels must match what's on screen: no green "works" beside a broken check, unle
   really works, and then asks for it on the page.
 - **Match the plain, direct style of the newer pages.** Explain terms when they first appear, and add them to the glossary.
 
+## Case study pages
+A case study is the whiteboard part of a system design interview: the interviewer states a problem, and you draw a design
+that fits the requirements. It is **not** a pattern page, so none of the debugger workbench rules above apply.
+
+- **Only the design and the controls.** A one- or two-sentence problem statement, the requirement controls, and the
+  diagram. No advice on running the interview, no debugger, no deep-dive essays and no mock questions.
+- **Functional requirements are checkboxes.** Hypothetical features, such as a mobile app, a marketplace or in-store
+  payments, that add or remove the components they need.
+- **Non-functional requirements are controls.** Volume, throughput, latency, availability, durability, security, UX,
+  freshness, isolation and maintainability. Each one changes the diagram in a visible way, by adding, removing or
+  relabelling components.
+- **Examples go from simple to complex.** Preset buttons, starting from the smallest reasonable design.
+- **The diagram uses one shape per kind of component**, from `src/pages/caseStudyDiagram.tsx`: frontends and clients,
+  gateways and CDNs, services, databases, caches, queues, event streams, object storage, security components and external
+  systems, plus dashed zones such as a private network or a regulated zone. Solid lines are synchronous calls, and dashed
+  lines are asynchronous.
+- **Every box says what it's used for in this system**, not what it generically is: "merchant callbacks, reminder jobs",
+  not "jobs, retries". Every line has a `purpose` saying what flows along it.
+- **Clicking a box** fades everything it doesn't talk to, and shows one sentence on which requirement put it there, one on
+  its trade-off, and a list of its connections with their purpose.
+- **A glossary** sits under the diagram, listing only the terms on screen (WAF, CDN, read replica and so on) plus a few
+  general ones such as synchronous and asynchronous. Write each meaning for someone who has never met the term.
+- **A small row of computed numbers** is fine, such as peak throughput, storage growth, allowed downtime, and whether the
+  latency and availability targets are met.
+- **Layout:** nodes sit on a grid of columns and rows, and unused rows collapse. Lines are routed automatically through
+  the gaps. Before shipping, test every combination of requirements in a script: every line must route without passing
+  behind a box, and no two boxes may overlap. Then read screenshots of the examples.
+- **Keep it generic:** never name or describe a real company. Anything about a specific interview goes in a private note
+  outside the repo.
+- Thresholds and timings are rules of thumb, so the footer says so.
+
 ## Content roadmap
 First content group: **Finance: High-Throughput & Low-Latency**, because idempotency and double-spend prevention are
 first-class concerns there and make for concrete, high-stakes examples.
@@ -214,10 +245,7 @@ Authorization (what are you allowed to do?):
 - [ ] Delegated Access (scopes, token exchange, acting on behalf of a user)
 - [ ] Maker-Checker Approvals (four-eyes principle)
 
-Third content group: **Case Studies**, which design one realistic system end to end and link out to the pattern pages. A case
-study page starts from the business, then covers requirements and scale, architecture, deep dives, a debugger for the critical
-flow, a security review and a mock interview. Scenarios stay generic: never name or describe a real company, and keep anything
-about a specific interview in a private note outside the repo.
+Third content group: **Case Studies**. These follow different rules from pattern pages: see "Case study pages" below.
 
 - [x] Pay-Later Checkout
 
