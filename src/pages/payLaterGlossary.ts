@@ -1,5 +1,7 @@
-// Terms for the Pay-Later Checkout diagram. A term is listed when any of its boxes is on screen, or always if it has none.
-export type Term = { term: string; meaning: string; ids?: string[] }
+// Terms for the Pay-Later Checkout diagram. A term is listed when any of its boxes is on screen and its condition holds.
+import type { Term } from './CaseStudyPage'
+
+const titled = (text: string) => (d: { nodes: { title: string }[] }) => d.nodes.some((x) => x.title.includes(text))
 
 export const GLOSSARY: Term[] = [
   { term: 'Synchronous call', meaning: 'The caller waits for the answer before carrying on, like a phone call. Drawn as a solid line.' },
@@ -8,10 +10,10 @@ export const GLOSSARY: Term[] = [
   { term: 'Availability, such as 99.9%', meaning: 'The share of time the system works. 99.9% allows about 8.8 hours of downtime a year, and 99.99% about 53 minutes.' },
   { term: 'Throughput', meaning: 'How many requests per second the system handles. Peak throughput is what you design for.' },
   { term: 'Frontend', meaning: 'What people use directly: a website, a mobile app or a store terminal.', ids: ['web', 'app', 'pos', 'portal', 'merchant'] },
-  { term: 'Load balancer', meaning: 'Spreads incoming requests across several copies of a service, so no single copy is overloaded or a single point of failure.', ids: ['gateway'] },
-  { term: 'API gateway', meaning: 'The single front door for API calls. It checks who is calling, applies rate limits and routes each request to the right service.', ids: ['gateway'] },
-  { term: 'WAF', meaning: 'Web application firewall. It inspects incoming requests and blocks common attacks, such as SQL injection or floods of bots, before they reach your code.', ids: ['gateway'] },
-  { term: 'Rate limit', meaning: 'A cap on how many requests a caller can make per second. Per merchant, it stops one big merchant from slowing down everyone else.', ids: ['gateway', 'cache'] },
+  { term: 'Load balancer', meaning: 'Spreads incoming requests across several copies of a service, so no single copy is overloaded or a single point of failure.', ids: ['gateway'], when: (d) => d.nodes.some((x) => x.title === 'Load balancer') },
+  { term: 'API gateway', meaning: 'The single front door for API calls. It checks who is calling, applies rate limits and routes each request to the right service.', ids: ['gateway'], when: titled('API gateway') },
+  { term: 'WAF', meaning: 'Web application firewall. It inspects incoming requests and blocks common attacks, such as SQL injection or floods of bots, before they reach your code.', ids: ['gateway'], when: titled('WAF') },
+  { term: 'Rate limit', meaning: 'A cap on how many requests a caller can make per second. Per merchant, it stops one big merchant from slowing down everyone else.', ids: ['gateway', 'cache'], when: (d) => d.nodes.some((x) => (x.sub ?? '').includes('per-merchant')) },
   { term: 'CDN', meaning: 'Content delivery network. Copies of static files, such as images and pages, are kept on servers close to users, so they load fast.', ids: ['cdn'] },
   { term: 'Service', meaning: 'A program that owns one area of the business and its data, and offers it to others through an API.', ids: ['checkout', 'credit', 'repayments', 'identity', 'settlement', 'collections', 'notify', 'deposits', 'catalog', 'decision', 'push'] },
   { term: 'Modular monolith', meaning: 'One deployable program, organized internally into clear modules. Simple to run, and one transaction can cover several modules.', ids: ['monolith'] },
@@ -23,12 +25,12 @@ export const GLOSSARY: Term[] = [
   { term: 'Database (PostgreSQL)', meaning: 'Stores the data that must be correct, such as limits, loans and the ledger, with transactions.', ids: ['db', 'depositDb'] },
   { term: 'Primary and standby', meaning: 'The primary database takes all writes. A standby keeps an exact copy, and takes over if the primary fails.', ids: ['standby'] },
   { term: 'Read replica', meaning: 'A read-only copy of the database, slightly behind. Good for reports and portals, never for decisions about money.', ids: ['replica'] },
-  { term: 'Sharding', meaning: 'Splitting one database into several, each holding part of the data, such as one range of customers.', ids: ['db'] },
+  { term: 'Sharding', meaning: 'Splitting one database into several, each holding part of the data, such as one range of customers.', ids: ['db'], when: titled('shards') },
   { term: 'Sync or async replication', meaning: 'Sync: a commit waits until the copy has it, so nothing is lost. Async: the copy catches up a moment later, so a few seconds can be lost in a disaster.', ids: ['standby', 'region'] },
   { term: 'Region', meaning: "A separate data center location, far enough away that one disaster can't take out both.", ids: ['region'] },
   { term: 'Cache (Redis)', meaning: "Fast in-memory storage for data that can be rebuilt, such as sessions and counters. Never the source of truth for money.", ids: ['cache'] },
-  { term: 'Queue', meaning: 'A list of jobs waiting to be done, such as "call this merchant back" or "send this reminder". A worker takes each job, and if it fails, the job is retried later.', ids: ['events'] },
-  { term: 'Event stream (Kafka)', meaning: 'A durable log of things that happened, such as LoanCreated. Many services read it independently, and it can be replayed from the start.', ids: ['events'] },
+  { term: 'Queue', meaning: 'A list of jobs waiting to be done, such as "call this merchant back" or "send this reminder". A worker takes each job, and if it fails, the job is retried later.', ids: ['events'], when: (d) => d.nodes.some((x) => x.kind === 'queue') },
+  { term: 'Event stream (Kafka)', meaning: 'A durable log of things that happened, such as LoanCreated. Many services read it independently, and it can be replayed from the start.', ids: ['events'], when: (d) => d.nodes.some((x) => x.kind === 'stream') },
   { term: 'Event', meaning: 'A record that something happened, such as "payment received for loan 42". Other services react to it in their own time.', ids: ['events'] },
   { term: 'Retry', meaning: 'Trying a failed job again later. Safe only if doing it twice has the same effect as once.', ids: ['events'] },
   { term: 'Data lake', meaning: 'Cheap storage for large amounts of history, used for analysis, reports and training models, away from production systems.', ids: ['lake'] },
@@ -40,8 +42,8 @@ export const GLOSSARY: Term[] = [
   { term: 'Tokenization', meaning: 'Replacing a sensitive value, such as an ID number, with a meaningless token. Only the vault can turn the token back into the real value.', ids: ['vault'] },
   { term: 'Key management (KMS)', meaning: 'A service that holds encryption keys and secrets, controls who can use them, and rotates them.', ids: ['kms'] },
   { term: 'Audit log', meaning: "An append-only record of who did what and when, stored where the people being audited can't change it.", ids: ['audit'] },
-  { term: 'Private network and mTLS', meaning: 'Services run in a network the internet cannot reach. With mTLS, each service proves its identity to the other on every connection.' },
-  { term: 'Regulated zone', meaning: 'The parts that handle money and personal data under the strictest controls: limited access, reviewed changes and full audit.' },
+  { term: 'Private network and mTLS', meaning: 'Services run in a network the internet cannot reach. With mTLS, each service proves its identity to the other on every connection.', when: (d) => d.zones.some((z) => z.id === 'private') },
+  { term: 'Regulated zone', meaning: 'The parts that handle money and personal data under the strictest controls: limited access, reviewed changes and full audit.', when: (d) => d.zones.some((z) => z.id === 'regulated') },
   { term: 'Settlement and reconciliation', meaning: 'Settlement pays merchants what they are owed. Reconciliation checks your records against bank statements, to the cent.', ids: ['settlement'] },
   { term: 'Collections', meaning: 'Handling installments that were not paid on time: reminders, fees and agreements.', ids: ['collections'] },
 ]

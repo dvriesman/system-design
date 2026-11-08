@@ -1515,3 +1515,74 @@
   margin: 0;
 }
 
+/* Sequence diagrams on case study pages. */
+.sq-part rect {
+  fill: var(--surface);
+  stroke: var(--svc);
+  stroke-width: 1.5;
+}
+.sq-part.client rect {
+  stroke: var(--cons);
+}
+.sq-part.edge rect {
+  stroke: var(--router);
+}
+.sq-part.store rect {
+  stroke: var(--relay);
+}
+.sq-part.external rect {
+  stroke: var(--muted);
+  stroke-dasharray: 5 3;
+}
+.sq-part text {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sq-life {
+  stroke: var(--line);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+.sq-msg line,
+.sq-msg path,
+.sq-key line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.3;
+}
+.sq-msg.reply line,
+.sq-key.reply line {
+  stroke: var(--muted);
+  stroke-dasharray: 5 4;
+}
+.sq-msg.async line,
+.sq-key.async line {
+  stroke: var(--relay);
+  stroke-dasharray: 2 3;
+}
+.sq-head {
+  fill: var(--ink);
+}
+.sq-open {
+  fill: none;
+  stroke: var(--relay);
+  stroke-width: 1.5;
+}
+.sq-label {
+  fill: var(--ink);
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+}
+.sq-n {
+  fill: var(--accent);
+  font-family: var(--f-mono);
+  font-weight: 700;
+}
+.sq-key {
+  width: 44px;
+  height: 21px;
+}
+

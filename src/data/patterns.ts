@@ -67,6 +67,11 @@ export const patternGroups: PatternGroup[] = [
         title: 'Pay-Later Checkout',
         summary: 'Design a pay-later network end to end: the business, the failures, the security and the trade-offs.',
       },
+      {
+        slug: 'merchant-integration-auth',
+        title: 'Pay-Later: Merchant Integration and Auth',
+        summary: 'Web checkout, WhatsApp and payment links: who proves what, and who may do what.',
+      },
     ],
   },
 ]

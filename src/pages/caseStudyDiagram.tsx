@@ -151,8 +151,9 @@ export function Diagram({
         {nodes.map((node) => {
           const b = boxes.get(node.id)!
           const chars = Math.max(10, Math.floor(b.w / 7.2))
-          const sub = node.sub ? wrap(node.sub, chars) : []
-          const lines = 1 + sub.length
+          const titleLines = wrap(node.title, Math.max(10, Math.floor(b.w / 8.2)))
+          const sub = node.sub ? wrap(node.sub, chars).slice(0, Math.max(1, Math.floor((b.h - 12) / 13) - titleLines.length)) : []
+          const lines = titleLines.length + sub.length
           const firstY = b.y + b.h / 2 - ((lines - 1) * 13) / 2 + 4 + (node.kind === 'client' ? 5 : 0)
           return (
             <g
@@ -171,11 +172,13 @@ export function Diagram({
               }}
             >
               <Shape kind={node.kind} b={b} />
-              <text x={b.x + b.w / 2} y={firstY} textAnchor="middle" className="cs-title">
-                {node.title}
-              </text>
+              {titleLines.map((line, i) => (
+                <text key={line} x={b.x + b.w / 2} y={firstY + i * 14} textAnchor="middle" className="cs-title">
+                  {line}
+                </text>
+              ))}
               {sub.map((line, i) => (
-                <text key={line} x={b.x + b.w / 2} y={firstY + 14 + i * 13} textAnchor="middle" className="cs-sub">
+                <text key={line} x={b.x + b.w / 2} y={firstY + titleLines.length * 14 + i * 13} textAnchor="middle" className="cs-sub">
                   {line}
                 </text>
               ))}

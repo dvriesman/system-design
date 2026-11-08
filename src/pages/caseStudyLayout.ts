@@ -25,8 +25,8 @@ type Point = { x: number; y: number }
 
 const COL_X = [20, 200, 385, 575, 765, 955]
 const COL_W = 155
-const ROW_H = 92
-const BOX_H = 58
+const ROW_H = 98
+const BOX_H = 66
 const TOP = 34
 export const DIAGRAM_WIDTH = 1130
 

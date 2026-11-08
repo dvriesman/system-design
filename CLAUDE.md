@@ -178,6 +178,8 @@ that fits the requirements. It is **not** a pattern page, so none of the debugge
   freshness, isolation and maintainability. Each one changes the diagram in a visible way, by adding, removing or
   relabelling components.
 - **Examples go from simple to complex.** Preset buttons, starting from the smallest reasonable design.
+- **Build each one on `src/pages/CaseStudyPage.tsx`**: a page passes its problem, requirement controls, examples, a
+  `design` function, metrics and a glossary, and the template draws the rest.
 - **The diagram uses one shape per kind of component**, from `src/pages/caseStudyDiagram.tsx`: frontends and clients,
   gateways and CDNs, services, databases, caches, queues, event streams, object storage, security components and external
   systems, plus dashed zones such as a private network or a regulated zone. Solid lines are synchronous calls, and dashed
@@ -186,6 +188,11 @@ that fits the requirements. It is **not** a pattern page, so none of the debugge
   not "jobs, retries". Every line has a `purpose` saying what flows along it.
 - **Clicking a box** fades everything it doesn't talk to, and shows one sentence on which requirement put it there, one on
   its trade-off, and a list of its connections with their purpose.
+- **Sequence diagrams** are added when the case study is about flows between parties, such as integrations and
+  authentication: one per channel, built from the chosen requirements with `src/pages/sequenceDiagram.tsx`, so that
+  changing a control (API key or OAuth, SMS code or passkey) changes the steps. Keep each step label short.
+- **Keep the scope tight.** Leave out options that add boxes without teaching anything for the scope, such as partner
+  platforms or a regulated mode on an integration case study.
 - **A glossary** sits under the diagram, listing only the terms on screen (WAF, CDN, read replica and so on) plus a few
   general ones such as synchronous and asynchronous. Write each meaning for someone who has never met the term.
 - **A small row of computed numbers** is fine, such as peak throughput, storage growth, allowed downtime, and whether the
@@ -248,6 +255,7 @@ Authorization (what are you allowed to do?):
 Third content group: **Case Studies**. These follow different rules from pattern pages: see "Case study pages" below.
 
 - [x] Pay-Later Checkout
+- [x] Pay-Later: Merchant Integration and Auth (web checkout, WhatsApp and payment links)
 
 Each pattern links to 2-3 related patterns so the sidebar order doubles as a suggested learning path (e.g. Outbox →
 Idempotency Keys → Exactly-Once Dedup).
