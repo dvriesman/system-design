@@ -35,6 +35,11 @@ export const patternGroups: PatternGroup[] = [
         title: 'Two-Phase Commit vs Eventual Consistency',
         summary: 'Move money across two databases: make everyone wait, or let everyone see the gap.',
       },
+      {
+        slug: 'saga',
+        title: 'Saga Pattern',
+        summary: 'Make several services act as one: a step and an undo for each, and a log that survives a crash.',
+      },
     ],
   },
   {
@@ -52,9 +57,19 @@ export const patternGroups: PatternGroup[] = [
         summary: 'Let an app act for you without your password, and keep a stolen code useless.',
       },
       {
+        slug: 'oauth-grant-types',
+        title: 'OAuth 2.0 Grant Types',
+        summary: 'Every way to get an access token, when to use each, and the real HTTP behind it.',
+      },
+      {
         slug: 'step-up-authentication',
         title: 'Step-Up Authentication',
         summary: 'Ask for more proof at the moment it matters, such as a withdrawal, not just at login.',
+      },
+      {
+        slug: 'rbac-abac-rebac',
+        title: 'RBAC vs ABAC vs ReBAC',
+        summary: 'Roles, rules over attributes, or relationships: what each answers well, and where each leaks.',
       },
     ],
   },

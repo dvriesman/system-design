@@ -37,7 +37,9 @@ their own decisions — the way they'd debug a real system.
 
 ## The bar for a pattern page
 **Step-Up Authentication** (`src/pages/StepUpPattern.tsx`, `StepUpLab.tsx`, `stepUpSim.ts`) is the best reference for a
-new page, followed by OAuth + PKCE and Sessions vs JWTs. Outbox and Idempotency Keys set the original debugger bar, but
+new page, followed by OAuth + PKCE and Sessions vs JWTs. Saga (`SagaPattern.tsx`, `SagaLab.tsx`, `sagaSim.ts`) is the
+reference for a flow across several services, and RBAC vs ABAC vs ReBAC (`AuthzModelsPattern.tsx`, `authzSim.ts`) for a
+page compared across several models with no crashes. Outbox and Idempotency Keys set the original debugger bar, but
 they don't have the newer page shape below yet. Every new pattern page should hit this bar, not a simplified version of it.
 
 ### Page shape: teach one concept at a time
@@ -113,7 +115,11 @@ A pattern page's debugger is a **workbench**, not a slideshow:
     panes, state panels, console, and timeline.
 
 If a pattern's mechanics don't naturally support one of the above (e.g. no "competing naive approach" exists), it's
-fine to omit that piece — but don't omit pieces just to save effort.
+fine to omit that piece — but don't omit pieces just to save effort. Authorization is the example so far: killing a process
+teaches nothing there, so RBAC vs ABAC vs ReBAC has no gutter dots, and says so. Its experiments jump to the request worth
+seeing instead (a `req` id on the step), and each request states what it should get, so a wrong answer shows up in the log.
+The same page shows that the final mode can be about something other than the model: data freshness (Zanzibar's new enemy
+problem). Follow a gap to its real fix, even when that fix is outside the topic's name.
 
 **The highlighted line is about to run, as in a real debugger.** The simulations store each step's state after its line
 has run, so pages must not read `step.s` or `step.locals` directly: use `debuggerView()` from `src/pages/debuggerView.ts`,
@@ -122,6 +128,11 @@ classes, and `sim-vars` on the Variables panel, so that stepping never makes the
 current line, the variables and what just changed must all stay on screen on desktop. Use `sim-code wrap` so code lines wrap.
 Denny raised this after having to scroll up and down on every step, and after seeing values change while their line was
 still highlighted.
+
+**Calls into another actor need `before`.** When a line calls another pane's code (the orchestrator calling a service, the
+API calling the authorization service), the caller's next step can't be guessed from the step just before it, which belongs
+to the other actor. Set `before` on that step to the caller's variables plus what the call returned, as `sagaSim.ts` and
+`authzSim.ts` do. `debuggerView()` uses it as is. Without it, a value appears before its line runs, or a returned value is missing.
 
 **Every line that mutates state must actually mutate it.** When a code line's text implies a state change (an
 `insert`, `update`, assignment), its `push()`/step call must carry the effect function that performs it — don't let
@@ -158,6 +169,10 @@ labels must match what's on screen: no green "works" beside a broken check, unle
   describe it in general terms and tell readers to check their own settings.
 - **Don't overclaim.** "The parts of the guide checked for this page don't mention X" is fine; "X isn't supported" needs
   proof. Write the page in the third person: never "I" or "I checked".
+- **When a source can't be read, say less.** The web fetch often drops code blocks and can't read most PDFs. For PDFs,
+  extract the text with `pdfjs-dist` in the scratchpad. For product docs, read the docs' source on GitHub
+  (`raw.githubusercontent.com`). If a term or a citation still can't be confirmed, leave it out or hedge it ("some writers call
+  it the pivot"), as the Saga page does with the 1987 paper and the pivot terms.
 - **Denny's experience is a source.** When he describes a real strategy (Keycloak sessions alongside JWTs, a per-user
   forced-logout timestamp in Redis, checks at Istio, OPA or the backend), add it to the page, and add the failure details he
   may not have mentioned, such as ordering, key expiry and clock differences. Never mention his employers or that he
@@ -212,7 +227,7 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [x] Idempotency Keys — done
 - [ ] Optimistic Concurrency Control (version/CAS checks)
 - [ ] Distributed Locking
-- [ ] Saga Pattern (orchestration vs choreography)
+- [x] Saga Pattern (orchestration vs choreography)
 - [x] Two-Phase Commit vs Eventual Consistency
 - [ ] Event Sourcing + Append-Only Ledger
 - [ ] CQRS
@@ -236,6 +251,9 @@ Authentication (who are you?):
 - [x] Sessions vs JWTs (server-side state vs self-contained tokens, and revocation)
 - [ ] Refresh Token Rotation + Reuse Detection
 - [x] OAuth 2.0 Authorization Code + PKCE
+- [x] OAuth 2.0 Grant Types: every grant with use cases. An interactive explorer, not a debugger page: a "which grant
+  fits?" wizard, each flow stepped through on a sequence diagram with the real HTTP at each step, a comparison table
+  and a scenario quiz
 - [ ] OpenID Connect + Single Sign-On
 - [ ] Multi-Factor Authentication (a second factor at login)
 - [x] Step-Up Authentication (more proof mid-session, for high-risk actions such as withdrawals)
@@ -245,7 +263,7 @@ Authentication (who are you?):
 
 Authorization (what are you allowed to do?):
 
-- [ ] RBAC vs ABAC vs ReBAC
+- [x] RBAC vs ABAC vs ReBAC
 - [ ] Policy Enforcement + Decision Points (centralized vs embedded)
 - [ ] Permission Caching + Revocation Propagation
 - [ ] Multi-Tenant Isolation (row-level security)
@@ -279,7 +297,9 @@ behavioral bugs, not type errors. Before calling a pattern page done:
    lines that are never highlighted.
 3. Drive the page in headless Chrome: `playwright-core` with `channel: 'chrome'`, kept in the session scratchpad, not the
    repo. Click through every experiment and gutter dot, and step through at desktop, laptop and phone sizes. Check for page
-   errors, sideways overflow and whether the current line stays visible.
+   errors, sideways overflow and whether the current line stays visible. Wait about 600 ms after each Step before
+   checking visibility: the columns scroll smoothly, and checking sooner reports lines as hidden when they aren't.
+   For a lab widget that computes answers, click through every combination of its controls and print the results.
 4. **Read the screenshots**, in light, dark and mobile. Most of the remaining bugs were found this way: clipped code,
    wrong labels, a panel that never changes, a misleading verdict. When a test fails oddly, check the test too: one
    "sideways scroll" failure on every step turned out to be a bug in the test.

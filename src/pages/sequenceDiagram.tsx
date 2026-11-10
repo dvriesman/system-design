@@ -23,7 +23,8 @@ function wrap(text: string, max: number): string[] {
   return lines
 }
 
-export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
+// current highlights one step and fades the later ones; onPick makes each step clickable.
+export function SequenceDiagram({ sequence, current, onPick }: { sequence: Sequence; current?: number; onPick?: (index: number) => void }) {
   const { participants, messages } = sequence
   const x = (id: string) => LEFT + participants.findIndex((p) => p.id === id) * COL + COL / 2
   const width = LEFT * 2 + participants.length * COL
@@ -31,7 +32,7 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
   const height = top + messages.length * STEP + 18
   return (
     <div className="sim-diagram">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Sequence diagram: ${sequence.title}`} className="sq" style={{ minWidth: Math.max(640, participants.length * 108) }}>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Sequence diagram: ${sequence.title}`} className="sq" style={{ minWidth: Math.max(420, participants.length * 108) }}>
         <defs>
           <marker id="sq-solid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0 0L10 5L0 10z" className="sq-head" />
@@ -60,9 +61,11 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
           const x1 = x(m.from)
           const x2 = x(m.to)
           const n = i + 1
+          const state = current === undefined ? '' : i === current ? ' cur' : i > current ? ' future' : ''
+          const pick = onPick ? { onClick: () => onPick(i), role: 'button', tabIndex: 0, style: { cursor: 'pointer' }, 'aria-label': `Step ${n}: ${m.label}` } : {}
           if (m.kind === 'self' || m.from === m.to) {
             return (
-              <g key={i} className="sq-msg self">
+              <g key={i} className={`sq-msg self${state}`} {...pick}>
                 <path d={`M${x1} ${y - 6} h22 v12 h-22`} markerEnd="url(#sq-solid)" />
                 {/* Near the right edge, the label goes to the left of the lifeline so it isn't cut off. */}
                 <text x={x1 > width - 230 ? x1 - 6 : x1 + 28} y={y + 3} textAnchor={x1 > width - 230 ? 'end' : 'start'} className="sq-label">
@@ -74,7 +77,8 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
           const left = Math.min(x1, x2)
           const right = Math.max(x1, x2)
           return (
-            <g key={i} className={`sq-msg ${m.kind ?? 'call'}`}>
+            <g key={i} className={`sq-msg ${m.kind ?? 'call'}${state}`} {...pick}>
+              <rect x={left} y={y - 20} width={Math.max(30, right - left)} height={26} className="sq-hit" />
               <line x1={x1} y1={y} x2={x2 + (x2 > x1 ? -2 : 2)} y2={y} markerEnd={m.kind === 'async' ? 'url(#sq-open)' : 'url(#sq-solid)'} />
               <text x={(left + right) / 2} y={y - 6} textAnchor="middle" className="sq-label">
                 <tspan className="sq-n">{n}</tspan> {m.label}

@@ -5,7 +5,9 @@ import { useEffect, useRef } from 'react'
 // The simulations record each step's state AFTER its line has run. A real debugger highlights the line that is
 // ABOUT to run, so these helpers show the state from before that line, and keep the screen on the running code.
 
-type ViewStep<S> = { s: S; line: string | null; crash: boolean; actor: string | null; locals?: Record<string, string> }
+// before: the variables just before this line, when a simulation knows them better than the guess below, such as
+// right after a call into another actor returns.
+type ViewStep<S> = { s: S; line: string | null; crash: boolean; actor: string | null; locals?: Record<string, string>; before?: Record<string, string> }
 type Line = { id: string; code: string }
 
 const ASSIGNED = /^\s*(?:val\s+|var\s+)?([A-Za-z_][\w.]*)\s*=(?!=)/
@@ -35,6 +37,7 @@ export function debuggerView<S>(steps: ViewStep<S>[], index: number, panes: Line
   if (!step.line || step.crash || index === 0) return { s: step.s, locals: own, pending: false }
 
   const previous = steps[index - 1]
+  if (step.before) return { s: previous.s, locals: step.before, pending: true }
   const before = previous.locals ?? {}
   const continuing = previous.line !== null && !previous.crash && previous.actor === step.actor && sameCall(panes, previous.line, step.line)
 
