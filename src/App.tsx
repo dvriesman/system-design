@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import AuthzModelsPattern from './pages/AuthzModelsPattern'
+import CircuitBreakerPattern from './pages/CircuitBreakerPattern'
 import Home from './pages/Home'
 import GrantTypesPattern from './pages/GrantTypesPattern'
 import IdempotencyPattern from './pages/IdempotencyPattern'
@@ -24,6 +25,7 @@ function App() {
         <Route path="/patterns/finance/sharding" element={<ShardingPattern />} />
         <Route path="/patterns/finance/two-phase-commit" element={<TwoPhasePattern />} />
         <Route path="/patterns/finance/saga" element={<SagaPattern />} />
+        <Route path="/patterns/finance/circuit-breaker" element={<CircuitBreakerPattern />} />
         <Route path="/patterns/security/sessions-vs-jwts" element={<SessionsPattern />} />
         <Route path="/patterns/security/oauth-pkce" element={<OAuthPattern />} />
         <Route path="/patterns/security/oauth-grant-types" element={<GrantTypesPattern />} />

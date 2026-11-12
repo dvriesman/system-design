@@ -235,7 +235,8 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Write-Ahead Log (WAL)
 - [ ] Change Data Capture (CDC)
 - [ ] Rate Limiting (token bucket / sliding window)
-- [ ] Circuit Breaker + Bulkhead
+- [x] Circuit Breaker (stop calling a failing dependency: closed, open, half-open, and slow calls)
+- [ ] Bulkhead (separate pools per dependency, so one slow dependency can't take every worker)
 - [ ] Backpressure in Queues
 - [x] Sharding/Partitioning
 - [ ] Consistent Hashing

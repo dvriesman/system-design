@@ -40,6 +40,11 @@ export const patternGroups: PatternGroup[] = [
         title: 'Saga Pattern',
         summary: 'Make several services act as one: a step and an undo for each, and a log that survives a crash.',
       },
+      {
+        slug: 'circuit-breaker',
+        title: 'Circuit Breaker',
+        summary: 'Stop calling a dependency that is failing or slow, answer with a fallback, and check back later.',
+      },
     ],
   },
   {

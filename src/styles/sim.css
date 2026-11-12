@@ -1833,3 +1833,46 @@
   color: var(--ink);
   font-weight: 600;
 }
+
+/* circuit breaker page */
+.cb-drive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cb-states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.cb-state {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.cb-state.on.closed {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+  color: var(--ok);
+  font-weight: 600;
+}
+.cb-state.on.open {
+  background: var(--bad-soft);
+  border-color: var(--bad);
+  color: var(--bad);
+  font-weight: 600;
+}
+.cb-state.on.half_open {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+  color: var(--warn);
+  font-weight: 600;
+}
+.cb-scroll {
+  max-height: 260px;
+  overflow-y: auto;
+}
