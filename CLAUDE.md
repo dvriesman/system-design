@@ -56,6 +56,9 @@ and previous/next links all read from it. Adding a guide means one entry there a
   section's `h2` an id so it appears there.
 - Light and dark themes. The toggle sets `data-theme` on `<html>` and remembers the choice; until then it follows the
   system setting. Use the `--k-*` or `.sim` custom properties, not `prefers-color-scheme`.
+- **Analytics:** Google Tag Manager (container `GTM-K62PFBTB`), loaded by `src/analytics.ts` only on the production host,
+  so local runs, previews and browser tests send nothing. Which tags fire, such as GA4, is configured in the GTM container,
+  not in this code. If the site gets a custom domain, add it to `PRODUCTION_HOSTS`.
 - Public app: content must be generic. No real company names, internal codenames or personal framing. Use invented or
   generic names ("the ledger service", "the lending platform"), even when an example Denny shares is personalized.
 
