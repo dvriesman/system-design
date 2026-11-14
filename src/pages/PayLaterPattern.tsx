@@ -5,7 +5,7 @@ import { CUSTOMER_STEPS, design, EXAMPLES, type Functional, type NonFunctional, 
 const rate = (n: number) => (n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString('en-US'))
 
 const study: CaseStudy<Functional, NonFunctional, System> = {
-  eyebrow: 'Case Studies · Pay-Later Checkout',
+  eyebrow: 'Reference architectures · Pay-Later Checkout',
   title: 'Pay-Later Checkout',
   problem:
     "design a buy-now-pay-later network. Customers with no credit card buy from partner merchants and pay in installments. Merchants are paid in full, minus a fee, and the lender takes the risk that customers don't pay.",

@@ -90,7 +90,7 @@ export default function IdempotencyPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Idempotency Keys</div>
+        <div className="sim-eyebrow">Data consistency · Idempotency Keys</div>
         <h1>Idempotency keys</h1>
         <p className="sim-lede">
           A client can never be 100% sure a request it sent actually landed — the connection can drop after the
@@ -456,7 +456,7 @@ INSERT INTO idempotency_keys (key, status) VALUES ('${KEY}', 'pending')
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "Every write endpoint that moves money takes a client-generated idempotency key. The key claim is atomic —
           an <code>INSERT ... ON CONFLICT DO NOTHING</code> on a unique-constrained table, not a separate
@@ -467,9 +467,9 @@ INSERT INTO idempotency_keys (key, status) VALUES ('${KEY}', 'pending')
           can't close: a claim that's reserved but never resolved."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "What if the downstream API doesn't support idempotency keys?" Then you're back to
+          Questions reviewers ask. "What if the downstream API doesn't support idempotency keys?" Then you're back to
           needing a lease/expiry on the local claim, and a reconciliation job to find out what actually happened
-          before you retry. Follow-up #2: "What if two different idempotency keys describe the same intent?" That's
+          before you retry. "What if two different idempotency keys describe the same intent?" That's
           a client bug this pattern can't fix — the key is only as good as the client's own retry logic reusing it
           correctly.
         </p>

@@ -1,39 +1,63 @@
-# System Design — Interactive Learning
+# Keystone: architecture guidelines you can step through
 
 ## Objective
-Build the best web application to teach system design patterns.
+Build the best guide to software architecture that engineers actually want to use. Keystone is a set of interactive
+guidelines: before applying a pattern, an engineer can learn how it works, decide whether it fits, see how it fails, and
+read how real products build it. It is a reference for designing and reviewing systems, **not** interview preparation:
+never frame content around interviews, interviewers or mock questions.
 
 ## Audience & use case
-Senior engineers who want to master system design. They are visual learners: not theory, but hands-on examples
-where they can step through execution, inspect state at each point, see diagrams, and evaluate the trade-offs of
-their own decisions — the way they'd debug a real system.
+Engineers and architects who design, review or operate systems. They are visual learners: not theory, but hands-on
+examples where they can step through execution, inspect state at each point, see diagrams, and weigh the trade-offs of
+their own decisions, the way they'd debug a real system. They come with a problem ("retries charge twice", "a
+dependency is slow"), so the catalog starts from problems, not from pattern names.
 
 ## Tech stack
-- **React + Vite + TypeScript** — no Next.js, kept deliberately simple (no SSR/server runtime needed; this is a
-  static, client-rendered app).
-- **React Router** for client-side routing between pattern pages.
-- **Tailwind** for the app shell (top bar, sidebar). Pattern pages share one scoped "debugger workbench"
-  stylesheet, `src/styles/sim.css` (custom properties for theming, `.sim-*` classes) — reuse it rather than writing
-  new per-page CSS.
-- **Vercel** for hosting. `vercel.json` has a catch-all rewrite to `index.html` (required for SPA client-side routes
-  to work on direct load/refresh).
+- **React + Vite + TypeScript**, no Next.js: a static, client-rendered app with no server runtime.
+- **React Router** for client-side routing.
+- **The shell** (top bar, sidebar, search, home page, the frame around each guide) is styled in `src/styles/shell.css`
+  with `--k-*` tokens. **Guide pages** share `src/styles/sim.css` with the `.sim-*` classes. Both use the same colours
+  and fonts (Bricolage Grotesque, Instrument Sans, JetBrains Mono), so they read as one product. Reuse them rather than
+  writing per-page CSS. Tailwind is still loaded, but new shell styling goes in `shell.css`.
+- **Vercel** for hosting. `vercel.json` has a catch-all rewrite to `index.html`, so client-side routes work on reload.
+
+## The catalog
+`src/data/catalog.ts` is the single source of truth. The sidebar, home page, search, routes, breadcrumbs, related guides
+and previous/next links all read from it. Adding a guide means one entry there and one line in the `PAGES` map in
+`src/App.tsx`.
+
+- **Categories are problems, not industries**, each with a question: Data consistency, Scaling data, Resilience,
+  Authentication, Authorization, and Reference architectures. Each lists its `planned` guides, shown on the home page,
+  and those must match the roadmap below.
+- **Every guide has:** a `summary`, a `problem` in the reader's words (shown on "Start from the problem" cards), a
+  `kind`, `qualities`, `related` slugs, search `keywords` and an `added` date.
+- **Kinds:** `debugger` (the full pattern page), `explorer` (an interactive reference such as Grant Types) and
+  `architecture` (a reference architecture). Each kind has a colour, used for the dots and badges.
+- **Qualities** are tags for filtering: consistency, reliability, security, performance, scalability.
+- **Routes:** `/guides/<slug>`, and `/architectures/<slug>` for reference architectures. Old `/patterns/<group>/<slug>`
+  links redirect, so never remove that route. In-page links use the new paths.
+- The two most recently added guides get a "new" badge. Don't hand out "new" more widely: it stops meaning anything.
 
 ## Application shell
-- Open to everyone. No authentication.
-- Responsive — usable on mobile (sidebar collapses to an off-canvas drawer).
-- Simple top bar with the application title.
-- Left sidebar with groups and submenus, one entry per pattern (`src/data/patterns.ts` is the single source of
-  truth driving both the sidebar and the routes).
-- Light and dark themes. A top-bar toggle sets `data-theme` on `<html>` and remembers the choice; until then it follows
-  the system setting. New styles should use the `dark:` variant or the `.sim` custom properties, not `prefers-color-scheme`.
-- No footer. Denny's name lives in the **top bar**, right-aligned, as a link to his LinkedIn profile
-  (`linkedin.com/in/dvriesman`) — this app doubles as a self-promotion/portfolio piece, not just a teaching tool, so
-  his identity should be visible without scrolling. On narrow screens the link collapses to just the icon so it
-  doesn't crowd the title; it expands back to the full name from the `sm` breakpoint up.
-- Public app — scenario content must be generic/de-personalized. No real company names, internal codenames, or
-  personal interview-prep framing; invented or generic names only (e.g. "the decision service", "the ledger
-  service", "the lending platform"). This applies even when a reference example the user shares to copy the style
-  from is itself personalized — match its mechanics and depth, strip the branding.
+- Open to everyone. No authentication. Responsive: on phones the sidebar becomes a drawer.
+- **Top bar:** the Keystone logo (an arch and its keystone) and tagline, a search button (⌘K, Ctrl+K or "/"), the theme
+  toggle, and Denny's name linking to his LinkedIn profile (`linkedin.com/in/dvriesman`). The site doubles as his
+  portfolio, so his name stays visible without scrolling; on narrow screens only the icon shows. The top bar is **not
+  sticky**, because each debugger pins its own controls to the top of the screen.
+- **Sidebar:** Overview, Learning paths, then each category, collapsible (remembered per browser), with a count. Each
+  item has a kind dot, a "new" badge where it applies, and a tick once the reader has opened it (kept in localStorage,
+  wrapped in try/catch, and only a convenience).
+- **Search palette:** searches titles, summaries, problems, keywords, categories and qualities. Give every new guide
+  keywords for the words people actually type, such as "outage" or "duplicate".
+- **Home page:** the hero, "Start from the problem", "How every guide works" (understand, decide, break, build), the
+  catalog with filters by quality and kind, the planned guides per category, and learning paths with progress.
+- **Guide frame** (`src/components/GuideFrame.tsx`) wraps every guide: a breadcrumb, the kind and quality tags, an "On
+  this page" menu built from the page's `h2[id]` headings, then related guides and previous/next links. Give every
+  section's `h2` an id so it appears there.
+- Light and dark themes. The toggle sets `data-theme` on `<html>` and remembers the choice; until then it follows the
+  system setting. Use the `--k-*` or `.sim` custom properties, not `prefers-color-scheme`.
+- Public app: content must be generic. No real company names, internal codenames or personal framing. Use invented or
+  generic names ("the ledger service", "the lending platform"), even when an example Denny shares is personalized.
 
 ## The bar for a pattern page
 **Step-Up Authentication** (`src/pages/StepUpPattern.tsx`, `StepUpLab.tsx`, `stepUpSim.ts`) is the best reference for a
@@ -57,7 +81,9 @@ So a page goes from simple to hard, and the hardest part comes last:
 5. **"What you just debugged":** one card per mode, then "each fix moves the responsibility somewhere".
 6. **A named real product, where it helps** (e.g. Keycloak), and **"How do you build this for real?"** Denny asks how things
    are really implemented, so always include this: real code shape, production pitfalls, and what the real systems do.
-7. **Glossary, "Say it in the interview", and a footer** listing what the simulation simplifies, and the sources.
+7. **Glossary, "Explain it in a design review", and a footer** listing what the simulation simplifies, and the sources.
+   The design-review section models how to justify the decision to colleagues, then lists the questions reviewers ask,
+   with short answers. Never call it interview practice.
 
 Don't put two independent decisions in front of the reader at once. On Sharding, placement and live migration were
 confusing together, so they became separate parts.
@@ -109,7 +135,7 @@ A pattern page's debugger is a **workbench**, not a slideshow:
     scenarios for this pattern (the ones worth remembering), on top of free-form breakpoint exploration.
 11. **Below the simulation:** a short conceptual write-up — the problem it solves, the fix, the price/trade-off you
     pay for the fix — plus, where relevant, a comparison table of implementation choices, a glossary of terms used
-    on the page, and a "say it in the interview" callout that models how to talk about the pattern out loud.
+    on the page, and an "Explain it in a design review" callout that models how to justify the pattern to colleagues.
 12. **Visual bar:** a distinct type system (display font for headings, body font, mono font for code/labels/tags),
     full light + dark theming via CSS custom properties, and consistent color-coding per actor across the code
     panes, state panels, console, and timeline.
@@ -181,12 +207,13 @@ labels must match what's on screen: no green "works" beside a broken check, unle
   really works, and then asks for it on the page.
 - **Match the plain, direct style of the newer pages.** Explain terms when they first appear, and add them to the glossary.
 
-## Case study pages
-A case study is the whiteboard part of a system design interview: the interviewer states a problem, and you draw a design
-that fits the requirements. It is **not** a pattern page, so none of the debugger workbench rules above apply.
+## Reference architectures
+A reference architecture is a whole system that reshapes itself as the requirements change: state the problem, set the
+requirements, and see a design that fits them. It is **not** a pattern page, so none of the debugger workbench rules above
+apply. (The code still calls them case studies: `CaseStudyPage.tsx`, `caseStudyDiagram.tsx`.)
 
 - **Only the design and the controls.** A one- or two-sentence problem statement, the requirement controls, and the
-  diagram. No advice on running the interview, no debugger, no deep-dive essays and no mock questions.
+  diagram. No debugger, no deep-dive essays and no quiz questions.
 - **Functional requirements are checkboxes.** Hypothetical features, such as a mobile app, a marketplace or in-store
   payments, that add or remove the components they need.
 - **Non-functional requirements are controls.** Volume, throughput, latency, availability, durability, security, UX,
@@ -203,11 +230,11 @@ that fits the requirements. It is **not** a pattern page, so none of the debugge
   not "jobs, retries". Every line has a `purpose` saying what flows along it.
 - **Clicking a box** fades everything it doesn't talk to, and shows one sentence on which requirement put it there, one on
   its trade-off, and a list of its connections with their purpose.
-- **Sequence diagrams** are added when the case study is about flows between parties, such as integrations and
+- **Sequence diagrams** are added when the architecture is about flows between parties, such as integrations and
   authentication: one per channel, built from the chosen requirements with `src/pages/sequenceDiagram.tsx`, so that
   changing a control (API key or OAuth, SMS code or passkey) changes the steps. Keep each step label short.
 - **Keep the scope tight.** Leave out options that add boxes without teaching anything for the scope, such as partner
-  platforms or a regulated mode on an integration case study.
+  platforms or a regulated mode on an integration architecture.
 - **A glossary** sits under the diagram, listing only the terms on screen (WAF, CDN, read replica and so on) plus a few
   general ones such as synchronous and asynchronous. Write each meaning for someone who has never met the term.
 - **A small row of computed numbers** is fine, such as peak throughput, storage growth, allowed downtime, and whether the
@@ -215,13 +242,16 @@ that fits the requirements. It is **not** a pattern page, so none of the debugge
 - **Layout:** nodes sit on a grid of columns and rows, and unused rows collapse. Lines are routed automatically through
   the gaps. Before shipping, test every combination of requirements in a script: every line must route without passing
   behind a box, and no two boxes may overlap. Then read screenshots of the examples.
-- **Keep it generic:** never name or describe a real company. Anything about a specific interview goes in a private note
+- **Keep it generic:** never name or describe a real company. Anything about a specific company goes in a private note
   outside the repo.
 - Thresholds and timings are rules of thumb, so the footer says so.
 
 ## Content roadmap
-First content group: **Finance: High-Throughput & Low-Latency**, because idempotency and double-spend prevention are
-first-class concerns there and make for concrete, high-stakes examples.
+The groups below are the order of work. On the site, guides appear under the problem categories in `catalog.ts`, and each
+category's `planned` list must match the unchecked items here. Money movement stays the main source of examples, because
+idempotency and double-spending are concrete, high-stakes failures.
+
+Data, scale and resilience:
 
 - [x] Transactional Outbox — done, reference implementation
 - [x] Idempotency Keys — done
@@ -243,7 +273,7 @@ first-class concerns there and make for concrete, high-stakes examples.
 - [ ] Caching for Low-Latency Reads
 - [ ] Reconciliation & Settlement Batch Jobs
 
-Second content group: **Security: Authentication & Authorization**, because the failures are concrete and work well in
+Security, split into the Authentication and Authorization categories, because the failures are concrete and work well in
 the debugger format (a stolen token that keeps working, a revoked permission still cached, one tenant reading another's
 data). Authentication first, since authorization depends on knowing who is calling.
 
@@ -256,7 +286,7 @@ Authentication (who are you?):
   fits?" wizard, each flow stepped through on a sequence diagram with the real HTTP at each step, a comparison table
   and a scenario quiz
 - [ ] OpenID Connect + Single Sign-On
-- [ ] Multi-Factor Authentication (a second factor at login)
+- [x] Multi-Factor Authentication (a second factor at login; Auth0 as the hosted option, a Keycloak custom authenticator as the self-built one)
 - [x] Step-Up Authentication (more proof mid-session, for high-risk actions such as withdrawals)
 - [ ] Credential Storage + Credential Stuffing Defense
 - [ ] API Keys + Signed Requests (HMAC, replay protection)
@@ -271,13 +301,13 @@ Authorization (what are you allowed to do?):
 - [ ] Delegated Access (scopes, token exchange, acting on behalf of a user)
 - [ ] Maker-Checker Approvals (four-eyes principle)
 
-Third content group: **Case Studies**. These follow different rules from pattern pages: see "Case study pages" below.
+Reference architectures. These follow different rules from pattern pages: see "Reference architectures" above.
 
 - [x] Pay-Later Checkout
 - [x] Pay-Later: Merchant Integration and Auth (web checkout, WhatsApp and payment links)
 
-Each pattern links to 2-3 related patterns so the sidebar order doubles as a suggested learning path (e.g. Outbox →
-Idempotency Keys → Exactly-Once Dedup).
+Each guide lists 2-3 `related` guides in `catalog.ts`, shown at the bottom of the page. Learning paths on the home page
+(`LEARNING_PATHS`) put guides in an order where each builds on the last; add new guides to a path where they fit.
 
 ## Working process
 Build and ship one pattern at a time. After each one, deploy to Vercel production and wait for feedback before

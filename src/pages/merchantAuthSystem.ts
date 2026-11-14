@@ -97,7 +97,7 @@ export function design({ f, n }: Requirements): System {
   if (f.portal) add('portal', 'service', 'Merchant portal', 'keys, links, refunds', 2, 5, 'Staff manage credentials, webhooks and refunds here.', 'The most powerful merchant actions happen here, so they need roles and an audit trail.')
   if (f.webhooks) add('hooks', 'service', 'Webhook sender', 'order events to merchants', 2, 6, 'Functional requirement: merchants hear about approvals and refunds without polling.', 'Delivered at least once, so merchants must handle duplicates.')
 
-  add('lending', 'service', 'Lending core', 'limits, loans, decisions', 3, 0, 'The credit side, kept behind every channel. This case study is about who may reach it.', 'Out of scope here: see the Pay-Later Checkout case study.')
+  add('lending', 'service', 'Lending core', 'limits, loans, decisions', 3, 0, 'The credit side, kept behind every channel. This architecture is about who may reach it.', 'Out of scope here: see the Pay-Later Checkout case study.')
   add('sessions', 'cache', 'Session store', multiRegion ? 'buyer sessions, 2 regions' : 'buyer sessions', 3, 1, 'Remembers a logged-in buyer for a short time, so the next step doesn\'t ask again.', 'Short sessions are safer and ask more often.')
   if (authServer) {
     add(

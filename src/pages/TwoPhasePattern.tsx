@@ -179,11 +179,11 @@ export default function TwoPhasePattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Two-Phase Commit vs Eventual Consistency</div>
+        <div className="sim-eyebrow">Data consistency · Two-Phase Commit vs Eventual Consistency</div>
         <h1>Two-phase commit vs eventual consistency</h1>
         <p className="sim-lede">
           Moving $100 between two accounts is easy inside one database. Put those accounts in two databases, as{' '}
-          <Link to="/patterns/finance/sharding">sharding</Link> eventually does, and no single commit can cover both. This page
+          <Link to="/guides/sharding">sharding</Link> eventually does, and no single commit can cover both. This page
           takes that problem one question at a time.
         </p>
         <ol className="sim-parts">
@@ -795,8 +795,8 @@ export default function TwoPhasePattern() {
             <p>
               The debit and a durable "this is owed" row commit together, so a crash can delay the credit but never lose it. That
               gives you delivery at least once, which means duplicates, so it needs a dedupe check on the receiving side. See{' '}
-              <Link to="/patterns/finance/outbox">Transactional Outbox</Link> and{' '}
-              <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link> for each half in depth.
+              <Link to="/guides/outbox">Transactional Outbox</Link> and{' '}
+              <Link to="/guides/idempotency-keys">Idempotency Keys</Link> for each half in depth.
             </p>
           </div>
           <div className="sim-card">
@@ -818,7 +818,7 @@ export default function TwoPhasePattern() {
             <li>
               <b>The dedupe check</b> trusts the same transaction to cover the credit and the dedupe record. If the record is
               written separately, the race from{' '}
-              <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link> comes straight back.
+              <Link to="/guides/idempotency-keys">Idempotency Keys</Link> comes straight back.
             </li>
             <li>
               <b>"Eventually"</b> trusts someone to be watching. If the relay or consumer is stuck, nothing looks wrong, and the
@@ -1172,7 +1172,7 @@ COMMIT;`}</pre>
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "First I'd try to avoid it, by picking a shard key that keeps the two rows together. When I can't, the choice is who
           deals with the half-done moment. Two-phase commit hides it: participants durably promise, the coordinator logs one
@@ -1184,13 +1184,13 @@ COMMIT;`}</pre>
           it."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "How would you implement prepare?" Either a database prepared transaction, which keeps real row
+          Questions reviewers ask. "How would you implement prepare?" Either a database prepared transaction, which keeps real row
           locks across the network calls, or a hold row committed locally, which doesn't lock but makes the in-between state
-          visible. Follow-up #2: "Does three-phase commit fix blocking?" Not in practice. It removes blocking only under
+          visible. "Does three-phase commit fix blocking?" Not in practice. It removes blocking only under
           assumptions about network timing that real networks break, and a partition can then produce a split decision. Replicating
-          the coordinator with consensus is the usual answer. Follow-up #3: "Isn't eventual consistency just weaker?" It gives up a
+          the coordinator with consensus is the usual answer. "Isn't eventual consistency just weaker?" It gives up a
           consistent view during the gap, in exchange for availability and no held locks. The final state is just as correct, if
-          you built the dedupe and the compensation. Follow-up #4: "How do you know the gap ever closes?" You monitor consumer lag,
+          you built the dedupe and the compensation. "How do you know the gap ever closes?" You monitor consumer lag,
           and you run a reconciliation job that compares both ledgers and flags anything older than an agreed limit.
         </p>
       </section>

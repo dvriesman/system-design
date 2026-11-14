@@ -104,7 +104,7 @@ export default function AuthzModelsPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Security: Authentication &amp; Authorization · RBAC vs ABAC vs ReBAC</div>
+        <div className="sim-eyebrow">Authorization · RBAC vs ABAC vs ReBAC</div>
         <h1>RBAC vs ABAC vs ReBAC</h1>
         <p className="sim-lede">
           Once you know who is calling, what may they do? Roles, rules over attributes, and relationships are three ways to answer, and each one is good at a different
@@ -559,7 +559,7 @@ export default function AuthzModelsPattern() {
             </li>
             <li>
               <b>ReBAC</b> moves it to keeping tuples in step with your data. If the app moves a document but fails to write the new parent tuple, the graph is wrong. Write
-              both reliably, for example through the <Link to="/patterns/finance/outbox">Transactional Outbox</Link>.
+              both reliably, for example through the <Link to="/guides/outbox">Transactional Outbox</Link>.
             </li>
             <li>
               <b>Snapshot tokens</b> move it to every write path. Each place that saves content must save a token, and each check on that content must pass it. Most checks don't
@@ -707,7 +707,7 @@ when { resource.company == principal.company && resource.amount <= principal.app
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "I'd pick the model from the questions the product has to answer. Job functions, like support or risk, are roles, scoped to the tenant. Rules about values, like
           approval limits and never approving your own payment, are attribute rules or conditions. Sharing, folders and groups are relationships, and I'd store them as tuples
@@ -717,9 +717,7 @@ when { resource.company == principal.company && resource.amount <= principal.app
           that fresh."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "Why not just ABAC for everything?" It's hard to answer "who can see this?", and relationships copied into attributes go stale. Follow-up #2:
-          "How do you stop one tenant reading another's data?" The tenant comes from the credential, every query is scoped, with row-level security as a second line. Follow-up
-          #3: "What if the authorization service is down?" Deny, and keep it highly available, because every request depends on it. Follow-up #4: "How do you revoke quickly?"
+          Questions reviewers ask. "Why not just ABAC for everything?" It's hard to answer "who can see this?", and relationships copied into attributes go stale. "How do you stop one tenant reading another's data?" The tenant comes from the credential, every query is scoped, with row-level security as a second line. "What if the authorization service is down?" Deny, and keep it highly available, because every request depends on it. "How do you revoke quickly?"
           Short-lived caches with versions, and snapshot tokens where a stale answer would leak new content.
         </p>
       </section>

@@ -6,7 +6,7 @@ import { design, EXAMPLES, MERCHANT_STEPS, metrics, type Functional, type NonFun
 const rate = (n: number) => (n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString('en-US'))
 
 const study: CaseStudy<Functional, NonFunctional, System> = {
-  eyebrow: 'Case Studies · Merchant Integration and Auth',
+  eyebrow: 'Reference architectures · Merchant Integration and Auth',
   title: 'Pay-Later: Merchant Integration and Auth',
   problem:
     "let merchants offer pay-later on their websites, in WhatsApp chats and through payment links shared on social networks. Each merchant's server, each buyer and each member of merchant staff must prove who they are, and reach only what they're allowed to.",

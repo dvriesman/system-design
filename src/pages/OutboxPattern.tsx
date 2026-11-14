@@ -151,7 +151,7 @@ export default function OutboxPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Transactional Outbox</div>
+        <div className="sim-eyebrow">Data consistency · Transactional Outbox</div>
         <h1>Transactional outbox</h1>
         <p className="sim-lede">
           When a credit decision commits to Postgres, the ledger service also needs to hear about it through Kafka.
@@ -482,7 +482,7 @@ export default function OutboxPattern() {
               The relay can send and then die before recording that it sent. On restart it sends again. So the
               outbox guarantees <b>no loss</b>, but allows <b>duplicates</b>. Consumers must be idempotent: dedupe on
               <code>event_id</code> in the same transaction as the side effect — see{' '}
-              <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link> for exactly how that claim works.
+              <Link to="/guides/idempotency-keys">Idempotency Keys</Link> for exactly how that claim works.
             </p>
           </div>
         </div>
@@ -609,7 +609,7 @@ COMMIT;
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "The decision row and the <code>decision.made</code> event are written in one Postgres transaction, using
           an outbox table. A relay, polling at first and CDC with Debezium once volume grows, publishes to Kafka
@@ -618,7 +618,7 @@ COMMIT;
           behind."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "Why not just publish to Kafka and have the service consume its own event to
+          Questions reviewers ask. "Why not just publish to Kafka and have the service consume its own event to
           update the DB?" That's the listen-to-yourself pattern. It works, but the service can't read its own write
           right away, which hurts a synchronous checkout response.
         </p>

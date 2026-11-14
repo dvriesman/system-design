@@ -115,7 +115,7 @@ export default function SagaPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Saga Pattern</div>
+        <div className="sim-eyebrow">Data consistency · Saga Pattern</div>
         <h1>Saga Pattern</h1>
         <p className="sim-lede">
           How do you make several services act as one, when each has its own database and no transaction can cover them all? A saga runs the steps one by one, and if a
@@ -193,7 +193,7 @@ export default function SagaPattern() {
           </table>
         </div>
         <p className="sim-small">
-          See <Link to="/patterns/finance/two-phase-commit">Two-Phase Commit vs Eventual Consistency</Link> for the locking side of this trade.
+          See <Link to="/guides/two-phase-commit">Two-Phase Commit vs Eventual Consistency</Link> for the locking side of this trade.
         </p>
       </section>
 
@@ -254,7 +254,7 @@ export default function SagaPattern() {
         </div>
         <p className="sim-small">
           Either way, a service must update its database and send its message together, or a crash between the two loses the message. That is the{' '}
-          <Link to="/patterns/finance/outbox">Transactional Outbox</Link>. The debugger below uses an orchestrator, because the failures are easier to follow in one place.
+          <Link to="/guides/outbox">Transactional Outbox</Link>. The debugger below uses an orchestrator, because the failures are easier to follow in one place.
         </p>
       </section>
 
@@ -281,7 +281,7 @@ export default function SagaPattern() {
             <h3>Case: a transfer between two of your own ledgers</h3>
             <p>
               <b>Maybe.</b> If both accounts can live in one database, a plain transaction is simpler and stronger. If they are sharded apart, a saga or two-phase commit is
-              needed. See <Link to="/patterns/finance/sharding">Sharding</Link>.
+              needed. See <Link to="/guides/sharding">Sharding</Link>.
             </p>
           </div>
           <div className="sim-card">
@@ -572,7 +572,7 @@ export default function SagaPattern() {
           <ul className="t">
             <li>
               <b>Idempotent steps</b> move the work to every participant. Each service must treat a repeated request for the same purchase as the same request. See{' '}
-              <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link>.
+              <Link to="/guides/idempotency-keys">Idempotency Keys</Link>.
             </li>
             <li>
               <b>Asking the bank</b> depends on the bank. It must honour the idempotency key and answer a status lookup. If it can't, the honest state is "unknown", and a person
@@ -618,7 +618,7 @@ fun advance(saga) {                  // called on every reply, and by the recove
 }`}</pre>
           <p className="sim-small">
             Real orchestrators usually send commands as messages and handle replies as they arrive, rather than waiting in one function. Updating the saga row and sending the
-            command must be one transaction: see <Link to="/patterns/finance/outbox">Transactional Outbox</Link>.
+            command must be one transaction: see <Link to="/guides/outbox">Transactional Outbox</Link>.
           </p>
         </div>
         <div className="sim-card">
@@ -701,7 +701,7 @@ try {
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "The purchase touches the limit, the loan, a bank payout and the merchant, each in its own service, and the bank will never join a distributed transaction. So I'd use
           a saga with an orchestrator: each step is a local transaction with a compensation, and the orchestrator records progress in a saga table, sending commands through an
@@ -711,9 +711,9 @@ try {
           payout succeeds."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "Why not two-phase commit?" The bank won't take part, and locks across services hurt availability. Follow-up #2: "Orchestration or
-          choreography?" Orchestration for money flows with several undos, because the state is in one place. Follow-up #3: "What if a compensation fails?" It's retried,
-          so design undos that can't be refused, and alert on sagas that stay stuck. Follow-up #4: "What does the user see meanwhile?" A pending state, then a notification.
+          Questions reviewers ask. "Why not two-phase commit?" The bank won't take part, and locks across services hurt availability. "Orchestration or
+          choreography?" Orchestration for money flows with several undos, because the state is in one place. "What if a compensation fails?" It's retried,
+          so design undos that can't be refused, and alert on sagas that stay stuck. "What does the user see meanwhile?" A pending state, then a notification.
         </p>
       </section>
 

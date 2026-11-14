@@ -78,7 +78,7 @@ export default function CircuitBreakerPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Circuit Breaker</div>
+        <div className="sim-eyebrow">Resilience · Circuit Breaker</div>
         <h1>Circuit Breaker</h1>
         <p className="sim-lede">
           When a service you depend on is failing, should you keep calling it? Every call that waits holds a worker and keeps a customer staring at a spinner, and every retry
@@ -185,7 +185,7 @@ export default function CircuitBreakerPattern() {
             <h3>Case: a payment that may have gone through</h3>
             <p>
               <b>Careful.</b> A breaker may stop new calls, but a call that timed out may still have succeeded. Retry it later with an{' '}
-              <Link to="/patterns/finance/idempotency-keys">idempotency key</Link>, never as a new payment.
+              <Link to="/guides/idempotency-keys">idempotency key</Link>, never as a new payment.
             </p>
           </div>
           <div className="sim-card">
@@ -724,7 +724,7 @@ fun score(order: Order): Score? = try {
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "Every call to the risk provider gets a timeout, sized from its normal latency, and at most one retry with jitter for blips. Around that I'd put a circuit breaker per
           dependency: a sliding window, opening at something like 50% failures, and counting slow calls as failures, because a provider that answers in two seconds hurts as much
@@ -733,9 +733,9 @@ fun score(order: Order): Score? = try {
           breaker open. And because a slow dependency can still exhaust workers before the breaker opens, I'd pair it with a bulkhead."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "Why not just retry?" Retries multiply load during an outage. Follow-up #2: "What's the fallback for a payment?" Usually a clear failure, and an
-          idempotent retry later, never a guess. Follow-up #3: "Do you share breaker state across instances?" Usually not: each instance learns quickly on its own, and sharing
-          adds a dependency. Follow-up #4: "How do you pick the thresholds?" From measured latency and error rates, then adjust from what the alerts show.
+          Questions reviewers ask. "Why not just retry?" Retries multiply load during an outage. "What's the fallback for a payment?" Usually a clear failure, and an
+          idempotent retry later, never a guess. "Do you share breaker state across instances?" Usually not: each instance learns quickly on its own, and sharing
+          adds a dependency. "How do you pick the thresholds?" From measured latency and error rates, then adjust from what the alerts show.
         </p>
       </section>
 

@@ -111,7 +111,7 @@ export default function SessionsPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Security: Authentication &amp; Authorization · Sessions vs JWTs</div>
+        <div className="sim-eyebrow">Authentication · Sessions vs JWTs</div>
         <h1>Sessions vs JWTs</h1>
         <p className="sim-lede">
           You log in once, and the server recognizes you on every later request. How? There are two very different answers, and the
@@ -706,7 +706,7 @@ export default function SessionsPattern() {
             <li>
               <b>None of these detect theft.</b> Every mode accepted the attacker until someone reported it. Device binding, unusual-activity
               checks and asking for a second factor before moving money are separate layers. Related:{' '}
-              <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link> protects against retried transfers, not stolen credentials.
+              <Link to="/guides/idempotency-keys">Idempotency Keys</Link> protects against retried transfers, not stolen credentials.
             </li>
           </ul>
         </div>
@@ -1204,7 +1204,7 @@ fun authenticate(request): Claims? {
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "It comes down to where the state lives, and how fast I can revoke. For a web app with its own backend, I'd start with sessions: a secure
           HttpOnly cookie holding a random ID, in a replicated store. It costs one cheap lookup per request, and in return one delete logs someone out
@@ -1214,11 +1214,11 @@ fun authenticate(request): Claims? {
           more, and compare it with just using sessions."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "How do you log someone out of a JWT system?" End the session or delete the refresh token, so no new tokens are issued. Then
+          Questions reviewers ask. "How do you log someone out of a JWT system?" End the session or delete the refresh token, so no new tokens are issued. Then
           either accept the wait until expiry, publish a revocation, or store a per-user logout time in Redis and reject tokens issued before it. Clearing the token
-          on the client isn't enough. Follow-up #2: "HS256 or RS256?" With many services, use asymmetric signing, so that only
-          the auth service can mint tokens. Follow-up #3: "Should the JWT hold permissions?" Keep it to identity, or accept that those permissions go stale
-          until it expires. Follow-up #4: "Where would you store it in a browser?" In an HttpOnly cookie with CSRF protection, not in localStorage, where
+          on the client isn't enough. "HS256 or RS256?" With many services, use asymmetric signing, so that only
+          the auth service can mint tokens. "Should the JWT hold permissions?" Keep it to identity, or accept that those permissions go stale
+          until it expires. "Where would you store it in a browser?" In an HttpOnly cookie with CSRF protection, not in localStorage, where
           any XSS can copy it.
         </p>
       </section>

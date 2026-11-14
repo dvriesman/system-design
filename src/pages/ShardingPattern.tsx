@@ -196,7 +196,7 @@ export default function ShardingPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Finance: High-Throughput &amp; Low-Latency · Sharding &amp; Partitioning</div>
+        <div className="sim-eyebrow">Scaling data · Sharding &amp; Partitioning</div>
         <h1>Sharding &amp; partitioning</h1>
         <p className="sim-lede">
           When accounts no longer fit on one database, you split them across several, called shards. The page takes this one
@@ -448,7 +448,7 @@ COMMIT;`}</pre>
           <ul className="t">
             <li>
               <b>Cross-shard transactions.</b> A transfer between accounts on A and B no longer fits in one database
-              transaction. It needs a saga or <Link to="/patterns/finance/two-phase-commit">two-phase commit</Link>, unless the shard key keeps related rows together.
+              transaction. It needs a saga or <Link to="/guides/two-phase-commit">two-phase commit</Link>, unless the shard key keeps related rows together.
             </li>
             <li>
               <b>Scatter-gather queries.</b> Anything not filtered by the shard key has to ask every shard. During a move, a
@@ -461,9 +461,9 @@ COMMIT;`}</pre>
           </ul>
           <p className="sim-muted sim-small">
             Related: the changelog plays the same role as the outbox table in{' '}
-            <Link to="/patterns/finance/outbox">Transactional Outbox</Link>, a durable record of a write that something else
+            <Link to="/guides/outbox">Transactional Outbox</Link>, a durable record of a write that something else
             consumes later. And a router crash after the shard applied a deposit, but before the client heard back, is exactly
-            the case <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link> exists for. Sharding doesn't solve it.
+            the case <Link to="/guides/idempotency-keys">Idempotency Keys</Link> exists for. Sharding doesn't solve it.
           </p>
         </div>
       </section>
@@ -895,7 +895,7 @@ UPDATE accounts
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "I treat this as two decisions. For placement, I'd shard by account ID with virtual nodes or fixed logical slots, so
           adding a shard moves about 1/N of the keys and relieves every shard, not just one neighbor. The harder part is moving
@@ -909,11 +909,10 @@ UPDATE accounts
         <p className="sim-muted sim-small">
           Expect this first: "Do you even need to shard?" Say what you'd exhaust before sharding, then name the trigger: write
           load on strongly consistent data, past what one primary can carry, where most transactions still touch a single
-          customer. Follow-up they may ask: "What about one account that's simply too hot?" No placement scheme fixes that, because
+          customer. Questions reviewers ask. "What about one account that's simply too hot?" No placement scheme fixes that, because
           moving a key relocates its traffic rather than dividing it. It needs an application-level split, such as sub-ledgers
-          for that merchant. Follow-up #2: "What about a transfer across shards?" That leaves single-database transactions
-          behind, which is where sagas or two-phase commit come in, or a shard key that keeps both sides together. Follow-up
-          #3: "What about stale reads?" A stale router can read an old copy until it's deleted, so if you need read-your-writes
+          for that merchant. "What about a transfer across shards?" That leaves single-database transactions
+          behind, which is where sagas or two-phase commit come in, or a shard key that keeps both sides together. "What about stale reads?" A stale router can read an old copy until it's deleted, so if you need read-your-writes
           across a move, reads must carry the map version too.
         </p>
       </section>

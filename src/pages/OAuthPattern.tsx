@@ -114,7 +114,7 @@ export default function OAuthPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Security: Authentication &amp; Authorization · OAuth 2.0 Authorization Code + PKCE</div>
+        <div className="sim-eyebrow">Authentication · OAuth 2.0 Authorization Code + PKCE</div>
         <h1>OAuth 2.0 Authorization Code + PKCE</h1>
         <p className="sim-lede">
           How can an app read your bank transactions without ever knowing your bank password? That's the question OAuth answers. The page
@@ -221,7 +221,7 @@ export default function OAuthPattern() {
             <h3>Case: a web app with its own login</h3>
             <p>
               <b>Often no.</b> One organization, one backend and a login form don't need a delegation protocol. A{' '}
-              <Link to="/patterns/security/sessions-vs-jwts">secure session cookie</Link> is simpler. Consider OAuth when you want one login shared
+              <Link to="/guides/sessions-vs-jwts">secure session cookie</Link> is simpler. Consider OAuth when you want one login shared
               across several apps, or when you're using an external identity provider.
             </p>
           </div>
@@ -671,7 +671,7 @@ export default function OAuthPattern() {
             </li>
             <li>
               <b>Tokens are still bearer credentials.</b> None of this protects a token after it's issued. See{' '}
-              <Link to="/patterns/security/sessions-vs-jwts">Sessions vs JWTs</Link> for what happens when one is stolen.
+              <Link to="/guides/sessions-vs-jwts">Sessions vs JWTs</Link> for what happens when one is stolen.
             </li>
           </ul>
         </div>
@@ -852,7 +852,7 @@ fun onCallback(url) {
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "OAuth lets an app act for a user without seeing their password. The app sends the browser to the authorization server, the user logs in and
           consents there, and a short-lived, one-time code comes back through the browser. The app then swaps the code for a token on a direct call, so the
@@ -862,10 +862,10 @@ fun onCallback(url) {
           keep scopes minimal, and use OpenID Connect if what I actually need is login."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "Why have a code at all?" Because the browser channel leaks, and the code limits what a leak can do. Follow-up #2: "Does PKCE
+          Questions reviewers ask. "Why have a code at all?" Because the browser channel leaks, and the code limits what a leak can do. "Does PKCE
           replace the client secret?" No: they answer different questions. The secret identifies a server-side client, and PKCE ties a code to one login, so
-          confidential clients should use both. Follow-up #3: "Why is plain not enough?" If the attacker can read the first URL, they already have the value.
-          Follow-up #4: "OAuth or OpenID Connect?" OAuth is about access. OpenID Connect adds an ID token that says who logged in.
+          confidential clients should use both. "Why is plain not enough?" If the attacker can read the first URL, they already have the value.
+          "OAuth or OpenID Connect?" OAuth is about access. OpenID Connect adds an ID token that says who logged in.
         </p>
       </section>
 

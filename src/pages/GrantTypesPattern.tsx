@@ -259,7 +259,7 @@ export default function GrantTypesPattern() {
   return (
     <div className="sim mx-auto max-w-6xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Security: Authentication &amp; Authorization · OAuth 2.0 Grant Types</div>
+        <div className="sim-eyebrow">Authentication · OAuth 2.0 Grant Types</div>
         <h1>OAuth 2.0 Grant Types</h1>
         <p className="sim-lede">
           A grant type is how a client gets an access token. Each one fits a different situation: a user at a browser, a service on its own, a TV with no keyboard, a shop terminal, or one service calling another for a user. Find the right
@@ -361,8 +361,8 @@ export default function GrantTypesPattern() {
           <dd>Still in the original standard, but current guidance says not to use it.</dd>
         </dl>
         <p className="sim-small">
-          See <Link to="/patterns/security/oauth-pkce">OAuth 2.0 Authorization Code + PKCE</Link> for how a stolen code is stopped, and{' '}
-          <Link to="/patterns/security/sessions-vs-jwts">Sessions vs JWTs</Link> for what happens when an access token is stolen.
+          See <Link to="/guides/oauth-pkce">OAuth 2.0 Authorization Code + PKCE</Link> for how a stolen code is stopped, and{' '}
+          <Link to="/guides/sessions-vs-jwts">Sessions vs JWTs</Link> for what happens when an access token is stolen.
         </p>
       </section>
 

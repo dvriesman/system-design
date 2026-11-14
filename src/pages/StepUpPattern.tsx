@@ -137,7 +137,7 @@ export default function StepUpPattern() {
   return (
     <div className="sim mx-auto max-w-5xl">
       <div className="sim-header">
-        <div className="sim-eyebrow">Security: Authentication &amp; Authorization · Step-Up Authentication</div>
+        <div className="sim-eyebrow">Authentication · Step-Up Authentication</div>
         <h1>Step-Up Authentication</h1>
         <p className="sim-lede">
           A second factor at login protects the moment you arrive. Step-up protects the moment that matters: it asks for more proof in the middle of a
@@ -620,7 +620,7 @@ export default function StepUpPattern() {
               token, and never assume that what it asked for was what happened.
             </li>
             <li>
-              <b>Retries</b> still need <Link to="/patterns/finance/idempotency-keys">Idempotency Keys</Link>. A crash after the debit would otherwise pay twice, or burn the approval with no
+              <b>Retries</b> still need <Link to="/guides/idempotency-keys">Idempotency Keys</Link>. A crash after the debit would otherwise pay twice, or burn the approval with no
               payment. In mode 5, the debit and using the approval share one transaction for that reason.
             </li>
           </ul>
@@ -760,7 +760,7 @@ fun enforce(action, claims, payment): Response? {
 }`}</pre>
           <p className="sim-small">
             RFC 9470 says clients must not inspect the access token to read these values, and don't need to: the challenge says what's needed. Repeat the original request with the same idempotency key.
-            See <Link to="/patterns/security/oauth-pkce">OAuth + PKCE</Link> for the login flow.
+            See <Link to="/guides/oauth-pkce">OAuth + PKCE</Link> for the login flow.
           </p>
         </div>
         <div className="sim-card">
@@ -815,7 +815,7 @@ fun enforce(action, claims, payment): Response? {
       </section>
 
       <section aria-labelledby="w4" className="sim-section">
-        <h2 id="w4">Say it in the interview</h2>
+        <h2 id="w4">Explain it in a design review</h2>
         <div className="sim-say">
           "A second factor at login protects the login, but everything afterwards rests on a token. So for sensitive actions I'd have the API decide how much proof each one needs. RFC 9470 gives a standard way to
           do this: the token carries acr and auth_time, and when they aren't enough, the API returns a 401 with insufficient_user_authentication, plus acr_values or max_age. The client sends the user through the
@@ -823,8 +823,8 @@ fun enforce(action, claims, payment): Response? {
           payee, show those on the user's device, and use it once, in the same transaction as the debit. That's dynamic linking in EU payments. I'd also limit prompts, so people keep reading them."
         </div>
         <p className="sim-muted sim-small">
-          Follow-up they may ask: "How is this different from MFA?" MFA is about what proof you use, and step-up is about when you ask for it. Follow-up #2: "Why not just keep the token short-lived?" Because renewal keeps the
-          original acr and auth_time, so a short token doesn't mean a recent login. Follow-up #3: "What happens if the second factor service is down?" For money, refuse, and let reads continue. Follow-up #4: "Does this stop social
+          Questions reviewers ask. "How is this different from MFA?" MFA is about what proof you use, and step-up is about when you ask for it. "Why not just keep the token short-lived?" Because renewal keeps the
+          original acr and auth_time, so a short token doesn't mean a recent login. "What happens if the second factor service is down?" For money, refuse, and let reads continue. "Does this stop social
           engineering?" No. If the user really approves a payment to a fraudster, every check passes, so you also need payee warnings and fraud monitoring.
         </p>
       </section>

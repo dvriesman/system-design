@@ -1,11 +1,15 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import type { ComponentType } from 'react'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { GuideFrame } from './components/GuideFrame'
+import { GUIDES, findGuide, guidePath } from './data/catalog'
 import AuthzModelsPattern from './pages/AuthzModelsPattern'
 import CircuitBreakerPattern from './pages/CircuitBreakerPattern'
-import Home from './pages/Home'
 import GrantTypesPattern from './pages/GrantTypesPattern'
+import Home from './pages/Home'
 import IdempotencyPattern from './pages/IdempotencyPattern'
 import MerchantAuthPattern from './pages/MerchantAuthPattern'
+import MfaPattern from './pages/MfaPattern'
 import OAuthPattern from './pages/OAuthPattern'
 import OutboxPattern from './pages/OutboxPattern'
 import PayLaterPattern from './pages/PayLaterPattern'
@@ -15,24 +19,51 @@ import ShardingPattern from './pages/ShardingPattern'
 import StepUpPattern from './pages/StepUpPattern'
 import TwoPhasePattern from './pages/TwoPhasePattern'
 
+// Each guide in the catalog, and the page that renders it.
+const PAGES: Record<string, ComponentType> = {
+  'idempotency-keys': IdempotencyPattern,
+  outbox: OutboxPattern,
+  'two-phase-commit': TwoPhasePattern,
+  saga: SagaPattern,
+  sharding: ShardingPattern,
+  'circuit-breaker': CircuitBreakerPattern,
+  'sessions-vs-jwts': SessionsPattern,
+  'oauth-pkce': OAuthPattern,
+  'oauth-grant-types': GrantTypesPattern,
+  'multi-factor-authentication': MfaPattern,
+  'step-up-authentication': StepUpPattern,
+  'rbac-abac-rebac': AuthzModelsPattern,
+  'pay-later-checkout': PayLaterPattern,
+  'merchant-integration-auth': MerchantAuthPattern,
+}
+
+// Links from before the catalog was reorganized, such as /patterns/finance/outbox, still work.
+function LegacyRedirect() {
+  const { slug = '' } = useParams()
+  const guide = findGuide(slug)
+  return <Navigate to={guide ? guidePath(guide) : '/'} replace />
+}
+
 function App() {
   return (
     <AppShell>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/patterns/finance/outbox" element={<OutboxPattern />} />
-        <Route path="/patterns/finance/idempotency-keys" element={<IdempotencyPattern />} />
-        <Route path="/patterns/finance/sharding" element={<ShardingPattern />} />
-        <Route path="/patterns/finance/two-phase-commit" element={<TwoPhasePattern />} />
-        <Route path="/patterns/finance/saga" element={<SagaPattern />} />
-        <Route path="/patterns/finance/circuit-breaker" element={<CircuitBreakerPattern />} />
-        <Route path="/patterns/security/sessions-vs-jwts" element={<SessionsPattern />} />
-        <Route path="/patterns/security/oauth-pkce" element={<OAuthPattern />} />
-        <Route path="/patterns/security/oauth-grant-types" element={<GrantTypesPattern />} />
-        <Route path="/patterns/security/step-up-authentication" element={<StepUpPattern />} />
-        <Route path="/patterns/security/rbac-abac-rebac" element={<AuthzModelsPattern />} />
-        <Route path="/patterns/case-studies/pay-later-checkout" element={<PayLaterPattern />} />
-        <Route path="/patterns/case-studies/merchant-integration-auth" element={<MerchantAuthPattern />} />
+        {GUIDES.map((g) => {
+          const Page = PAGES[g.slug]
+          return (
+            <Route
+              key={g.slug}
+              path={guidePath(g)}
+              element={
+                <GuideFrame guide={g}>
+                  <Page />
+                </GuideFrame>
+              }
+            />
+          )
+        })}
+        <Route path="/patterns/:group/:slug" element={<LegacyRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

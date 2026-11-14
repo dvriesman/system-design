@@ -1876,3 +1876,80 @@
   max-height: 260px;
   overflow-y: auto;
 }
+
+/* multi-factor authentication page */
+.mfa-code {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.mfa-code b {
+  font-family: var(--f-mono);
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+}
+.mfa-bar {
+  width: 180px;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) var(--left), var(--line) var(--left));
+}
+.mfa-trace {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.mfa-trace li {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+.mfa-trace li span {
+  color: var(--muted);
+}
+.mfa-trace code {
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.mfa-trace mark {
+  background: var(--hl);
+  color: var(--ink);
+}
+.mfa-trace u {
+  text-decoration-color: var(--bad);
+  text-decoration-thickness: 2px;
+}
+@media (max-width: 560px) {
+  .mfa-trace li {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+.mfa-input {
+  font-family: var(--f-mono);
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  width: 9em;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.mfa-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+/* Long identifiers, such as Java service file names, must wrap rather than widen a card. */
+.sim-card {
+  min-width: 0;
+}
+.sim-card code {
+  overflow-wrap: anywhere;
+}
